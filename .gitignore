@@ -1,0 +1,7 @@
+.claude
+.idea
+.jbeval
+.mvn
+data-generator-base-rule/target
+data-validator/target
+data-sync-mysql2hive/target
