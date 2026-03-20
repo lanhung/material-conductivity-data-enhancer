@@ -1,0 +1,27 @@
+run_id	constraint_code	constraint_name	passed	total_checked	violation_count	pass_rate
+1773802503281	HC-1	All conductivity > 0	true	113960665	0	100
+1773800129257	HC-1	All conductivity > 0	true	113968301	0	100
+1773802503281	HC-2a	All molar_fraction > 0	true	190961722	0	100
+1773800129257	HC-2a	All molar_fraction > 0	true	190974012	0	100
+1773802503281	HC-2b	Element-specific solubility limits	true	190961722	0	100
+1773800129257	HC-2b	Element-specific solubility limits	true	190974012	0	100
+1773802503281	HC-3	Total dopant fraction <= 0.30 per sample	true	113960665	0	100
+1773800129257	HC-3	Total dopant fraction <= 0.30 per sample	true	113968301	0	100
+1773802503281	HC-4	At least one +2 or +3 valence dopant per sample	true	113960665	0	100
+1773800129257	HC-4	At least one +2 or +3 valence dopant per sample	true	113968301	0	100
+1773802503281	HC-5	Exactly one major phase per sample	true	113960665	0	100
+1773800129257	HC-5	Exactly one major phase per sample	true	113968301	0	100
+1773802503281	HC-6a	All dopant sample_ids exist in material_samples	true	113960665	0	100
+1773800129257	HC-6a	All dopant sample_ids exist in material_samples	true	113968301	0	100
+1773802503281	HC-6b	All sintering sample_ids exist in material_samples	true	110543958	0	100
+1773800129257	HC-6b	All sintering sample_ids exist in material_samples	true	110551592	0	100
+1773802503281	HC-6c	All phase sample_ids exist in material_samples	true	113960665	0	100
+1773800129257	HC-6c	All phase sample_ids exist in material_samples	true	113968301	0	100
+1773802503281	HC-7	Monotonicity within recipe group (temp up -> cond up)	true	113960665	0	100
+1773800129257	HC-7	Monotonicity within recipe group (temp up -> cond up)	false	113968301	7569	99.99335867962093
+1773802503281	HC-8	Phase-dopant coupling constraints	true	113960665	0	100
+1773800129257	HC-8	Phase-dopant coupling constraints	false	113968301	67	99.99994121172342
+1773802503281	HC-9	Conductivity within bounds [1e-8, 1.0]	true	113960665	0	100
+1773800129257	HC-9	Conductivity within bounds [1e-8, 1.0]	true	113968301	0	100
+1773802503281	HC-10	Operating temperature within [300, 1400]	true	113960665	0	100
+1773800129257	HC-10	Operating temperature within [300, 1400]	true	113968301	0	100

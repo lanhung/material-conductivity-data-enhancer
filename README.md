@@ -46,7 +46,8 @@ material-conductivity-data-enhancer/
 │   ├── submit.sh                         # Data generation submit script
 │   ├── submit-mysql2hive.sh              # MySQL sync submit script
 │   └── submit-data-validator.sh          # Data validation submit script
-├── docs/                                 # Project documentation
+├── docs/
+│   └── run_result/                       # Exported validation run results (TSV)
 └── pom.xml                               # Maven parent POM
 ```
 
@@ -93,6 +94,52 @@ The `data-validator` module provides two types of validation:
   - Numerical distribution — Normalized RMSE of quantile vectors (conductivity, temperature, dopant fraction, sintering temperature)
   - Joint distribution — Primary dopant–conductivity correlation preservation
 - **Compliant Data Filtering**: Outputs data passing hard constraints to a separate Hive database
+
+## Run Results
+
+The exported run results are located in [docs/run_result/](docs/run_result/).
+
+### Data Overview
+
+| Dataset | Total Records | Sample Ratio |
+|---------|--------------|--------------|
+| `ods_zirconia_rule_based` (raw generated) | 113,968,301 | 100% |
+| `conductivity_compliant_rule_based` (after filtering) | 113,960,665 | 100% |
+
+### Hard Constraint Validation
+
+Raw generated data (`ods_zirconia_rule_based`): **99.993%** pass rate — 7,636 violations filtered out.
+Compliant data (`conductivity_compliant_rule_based`): **100%** pass rate on all constraints.
+
+| Constraint | Description | Raw Pass Rate | Compliant Pass Rate |
+|------------|-------------|---------------|---------------------|
+| HC-1 | All conductivity > 0 | 100% | 100% |
+| HC-2a | All molar_fraction > 0 | 100% | 100% |
+| HC-2b | Element-specific solubility limits | 100% | 100% |
+| HC-3 | Total dopant fraction ≤ 0.30 | 100% | 100% |
+| HC-4 | At least one +2/+3 valence dopant | 100% | 100% |
+| HC-5 | Exactly one major phase per sample | 100% | 100% |
+| HC-6a/b/c | Foreign key integrity | 100% | 100% |
+| HC-7 | Monotonicity (temp↑ → cond↑) | 99.993% | 100% |
+| HC-8 | Phase-dopant coupling | 99.999% | 100% |
+| HC-9 | Conductivity within [1e-8, 1.0] | 100% | 100% |
+| HC-10 | Temperature within [300, 1400] | 100% | 100% |
+
+### Fidelity Assessment
+
+Overall fidelity score: **0.847 (GOOD)**
+
+| Dimension | Score | Grade | Weight |
+|-----------|-------|-------|--------|
+| Dopant Element | 0.984 | EXCELLENT | 15% |
+| Sintering Temperature | 0.907 | EXCELLENT | 5% |
+| Synthesis Method | 0.883 | GOOD | 15% |
+| Operating Temperature | 0.874 | GOOD | 10% |
+| Processing Route | 0.872 | GOOD | 10% |
+| Crystal Phase (Major) | 0.871 | GOOD | 10% |
+| Dopant Molar Fraction | 0.808 | GOOD | 10% |
+| log10(Conductivity) | 0.768 | GOOD | 20% |
+| Dopant-Conductivity Correlation | 0.503 | POOR | 5% |
 
 ## Tech Stack
 
