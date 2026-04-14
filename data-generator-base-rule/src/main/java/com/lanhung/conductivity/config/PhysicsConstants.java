@@ -92,17 +92,17 @@ public final class PhysicsConstants implements Serializable {
 
     public static final Map<String, DopantProperty> DOPANT_PROPS = new HashMap<>();
     static {
-        DOPANT_PROPS.put("Y",  new DopantProperty("Y",  101.9, 3, 0.380, 0.08, 0.25, 3.0, 4.0, 0.20, 0.90, 1.05, 1.10, 1.25, -1.70));
-        DOPANT_PROPS.put("Sc", new DopantProperty("Sc", 87.0,  3, 0.330, 0.09, 0.12, 4.0, 3.0, 0.15, 0.78, 0.85, 1.05, 1.15, -1.00));
-        DOPANT_PROPS.put("Yb", new DopantProperty("Yb", 98.5,  3, 0.090, 0.08, 0.20, 4.0, 3.0, 0.18, 0.85, 0.95, 1.05, 1.20, -1.50));
-        DOPANT_PROPS.put("Ce", new DopantProperty("Ce", 105.3, 4, 0.050, 0.10, 0.18, 4.0, 3.0, 0.20, 0.95, 1.10, 1.10, 1.25, -1.80));
-        DOPANT_PROPS.put("Dy", new DopantProperty("Dy", 102.7, 3, 0.030, 0.08, 0.20, 4.0, 3.0, 0.18, 0.95, 1.10, 1.10, 1.30, -2.00));
-        DOPANT_PROPS.put("Bi", new DopantProperty("Bi", 96.0,  3, 0.030, 0.05, 0.15, 3.0, 4.0, 0.12, 1.00, 1.15, 1.15, 1.30, -2.20));
+        DOPANT_PROPS.put("Y",  new DopantProperty("Y",  101.9, 3, 0.380, 0.08, 0.25, 3.0, 4.0, 0.20, 0.90, 1.05, 1.10, 1.25, -1.54));
+        DOPANT_PROPS.put("Sc", new DopantProperty("Sc", 87.0,  3, 0.330, 0.09, 0.12, 4.0, 3.0, 0.15, 0.78, 0.85, 1.05, 1.15, -1.23));
+        DOPANT_PROPS.put("Yb", new DopantProperty("Yb", 98.5,  3, 0.090, 0.08, 0.20, 4.0, 3.0, 0.18, 0.85, 0.95, 1.05, 1.20, -2.09));
+        DOPANT_PROPS.put("Ce", new DopantProperty("Ce", 105.3, 4, 0.050, 0.10, 0.18, 4.0, 3.0, 0.20, 0.95, 1.10, 1.10, 1.25, -1.43));
+        DOPANT_PROPS.put("Dy", new DopantProperty("Dy", 102.7, 3, 0.030, 0.08, 0.20, 4.0, 3.0, 0.18, 0.95, 1.10, 1.10, 1.30, -1.58));
+        DOPANT_PROPS.put("Bi", new DopantProperty("Bi", 96.0,  3, 0.030, 0.05, 0.15, 3.0, 4.0, 0.12, 1.00, 1.15, 1.15, 1.30, -1.51));
         DOPANT_PROPS.put("Gd", new DopantProperty("Gd", 97.0,  3, 0.020, 0.08, 0.20, 4.0, 3.0, 0.18, 0.95, 1.10, 1.10, 1.30, -2.00));
         DOPANT_PROPS.put("Er", new DopantProperty("Er", 100.4, 3, 0.015, 0.08, 0.20, 4.0, 3.0, 0.18, 0.90, 1.05, 1.10, 1.25, -1.80));
-        DOPANT_PROPS.put("Lu", new DopantProperty("Lu", 97.7,  3, 0.010, 0.08, 0.20, 4.0, 3.0, 0.18, 0.82, 0.90, 1.05, 1.18, -1.20));
-        DOPANT_PROPS.put("Pr", new DopantProperty("Pr", 112.6, 3, 0.010, 0.05, 0.15, 3.0, 4.0, 0.12, 1.00, 1.15, 1.15, 1.30, -2.30));
-        DOPANT_PROPS.put("Ca", new DopantProperty("Ca", 112.0, 2, 0.010, 0.12, 0.20, 3.0, 2.0, 0.25, 1.00, 1.20, 1.15, 1.35, -2.20));
+        DOPANT_PROPS.put("Lu", new DopantProperty("Lu", 97.7,  3, 0.010, 0.08, 0.20, 4.0, 3.0, 0.18, 0.82, 0.90, 1.05, 1.18, -0.97));
+        DOPANT_PROPS.put("Pr", new DopantProperty("Pr", 112.6, 3, 0.010, 0.05, 0.15, 3.0, 4.0, 0.12, 1.00, 1.15, 1.15, 1.30, -2.11));
+        DOPANT_PROPS.put("Ca", new DopantProperty("Ca", 112.0, 2, 0.010, 0.12, 0.20, 3.0, 2.0, 0.25, 1.00, 1.20, 1.15, 1.35, -2.12));
         DOPANT_PROPS.put("Fe", new DopantProperty("Fe", 64.5,  3, 0.005, 0.02, 0.05, 3.0, 5.0, 0.06, 1.00, 1.15, 1.15, 1.30, -2.00));
         DOPANT_PROPS.put("Mn", new DopantProperty("Mn", 83.0,  2, 0.005, 0.01, 0.05, 3.0, 5.0, 0.04, 1.00, 1.15, 1.10, 1.30, -2.00));
         DOPANT_PROPS.put("Zn", new DopantProperty("Zn", 74.0,  2, 0.005, 0.02, 0.05, 3.0, 5.0, 0.06, 1.05, 1.20, 1.15, 1.35, -2.50));
