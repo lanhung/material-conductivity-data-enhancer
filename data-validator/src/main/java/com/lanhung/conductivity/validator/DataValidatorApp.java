@@ -7,6 +7,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -93,6 +94,7 @@ public class DataValidatorApp {
 
         HdfsResultSink hdfsSink = new HdfsResultSink(spark, outputPath);
         System.out.println("HDFS output path: " + outputPath);
+        List<String> failedStages = new ArrayList<>();
 
         // Load generated data tables
         int totalCount = (int) spark.table(database + ".material_samples").count();
@@ -117,6 +119,11 @@ public class DataValidatorApp {
         Dataset<Row> synthesisMethodDict = tryLoadTable(spark, database + ".synthesis_method_dict");
         Dataset<Row> processingRouteDict = tryLoadTable(spark, database + ".processing_route_dict");
         Dataset<Row> crystalStructureDict = tryLoadTable(spark, database + ".crystal_structure_dict");
+        System.out.printf(
+                "Optional table summary: synthesis_method_dict=%s, processing_route_dict=%s, crystal_structure_dict=%s%n",
+                synthesisMethodDict != null ? "loaded" : "missing",
+                processingRouteDict != null ? "loaded" : "missing",
+                crystalStructureDict != null ? "loaded" : "missing");
 
         if (runValidation) {
             try {
@@ -128,7 +135,9 @@ public class DataValidatorApp {
 
                 hdfsSink.saveHardConstraintResults(database, totalCount, sampledCount, sampleRatio, hcResults);
             } catch (Exception e) {
-                System.err.println("Failed to run/save hard constraint validation: " + e.getMessage());
+                failedStages.add("hard_constraint");
+                System.err.println("Failed to run/save hard constraint validation for database [" + database + "]");
+                System.err.println("Root cause: " + e.getClass().getName() + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -143,7 +152,9 @@ public class DataValidatorApp {
                         compliantOutputPath);
                 System.out.printf("Compliant samples: %d / %d%n", compliantCount, sampledCount);
             } catch (Exception e) {
-                System.err.println("Failed to filter compliant data: " + e.getMessage());
+                failedStages.add("compliant_filter");
+                System.err.println("Failed to filter compliant data for database [" + database + "]");
+                System.err.println("Root cause: " + e.getClass().getName() + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -157,6 +168,11 @@ public class DataValidatorApp {
             try {
                 System.out.println("Running fidelity validation against real data...");
                 System.out.println("Real data source: Hive database [" + realDatabase + "]");
+                System.out.printf(
+                        "Fidelity input summary: generated_db=%s, real_db=%s, synthesis_method_dict=%s, processing_route_dict=%s%n",
+                        database, realDatabase,
+                        synthesisMethodDict != null ? "loaded" : "missing",
+                        processingRouteDict != null ? "loaded" : "missing");
                 FidelityValidator fidelityValidator = new FidelityValidator(spark, realDatabase);
                 double overallScore = fidelityValidator.validate(
                         genSamples, genDopants, genSintering, genPhases,
@@ -165,19 +181,31 @@ public class DataValidatorApp {
                 hdfsSink.saveFidelityResults(database, totalCount, sampledCount, sampleRatio,
                         overallScore, fidelityValidator);
             } catch (Exception e) {
-                System.err.println("Failed to run/save fidelity validation: " + e.getMessage());
+                failedStages.add("fidelity");
+                System.err.println("Failed to run/save fidelity validation for generated database ["
+                        + database + "] against real database [" + realDatabase + "]");
+                System.err.println("Root cause: " + e.getClass().getName() + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
 
         spark.stop();
+        if (!failedStages.isEmpty()) {
+            String summary = String.join(", ", failedStages);
+            System.err.println("Validation completed with failures in stage(s): " + summary);
+            throw new RuntimeException("Validation completed with failures in stage(s): " + summary);
+        }
         System.out.println("Done.");
     }
 
     private static Dataset<Row> tryLoadTable(SparkSession spark, String tableName) {
         try {
-            return spark.table(tableName);
+            Dataset<Row> table = spark.table(tableName);
+            System.out.println("Loaded optional table: " + tableName);
+            return table;
         } catch (Exception e) {
+            System.err.println("Optional table unavailable: " + tableName
+                    + " (" + e.getClass().getSimpleName() + ": " + e.getMessage() + ")");
             return null;
         }
     }

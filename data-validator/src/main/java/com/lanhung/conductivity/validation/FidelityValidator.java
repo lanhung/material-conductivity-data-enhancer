@@ -7,6 +7,7 @@ import org.apache.spark.sql.SparkSession;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 /**
  * 保真度验证器：将生成数据与真实实验数据进行统计对比，
@@ -79,6 +80,14 @@ public class FidelityValidator implements Serializable {
         if (processingRouteDict != null) {
             processingRouteDict.createOrReplaceTempView("processing_route_dict");
         }
+        boolean hasSynthesisMethodDict = synthesisMethodDict != null;
+        boolean hasProcessingRouteDict = processingRouteDict != null;
+        if (!hasSynthesisMethodDict) {
+            System.err.println("Fidelity warning: synthesis_method_dict not loaded; falling back to raw synthesis_method_id categories.");
+        }
+        if (!hasProcessingRouteDict) {
+            System.err.println("Fidelity warning: processing_route_dict not loaded; falling back to raw processing_route_id categories.");
+        }
 
         scores.clear();
         categoricalRows.clear();
@@ -92,61 +101,54 @@ public class FidelityValidator implements Serializable {
         // ==================== 类别分布对比 ====================
         System.out.println("\n--- Categorical Distribution Fidelity ---\n");
 
-        scores.add(compareCategorical("Synthesis Method",
-                "SELECT COALESCE(sm.name, CAST(rs.synthesis_method_id AS STRING)) AS category, COUNT(*) AS cnt"
-                + " FROM real_samples rs LEFT JOIN synthesis_method_dict sm ON rs.synthesis_method_id = sm.id"
-                + " GROUP BY COALESCE(sm.name, CAST(rs.synthesis_method_id AS STRING))",
-                "SELECT COALESCE(sm.name, CAST(gs.synthesis_method_id AS STRING)) AS category, COUNT(*) AS cnt"
-                + " FROM gen_samples gs LEFT JOIN synthesis_method_dict sm ON gs.synthesis_method_id = sm.id"
-                + " GROUP BY COALESCE(sm.name, CAST(gs.synthesis_method_id AS STRING))",
-                0.15));
+        scores.add(evaluateDimension("Synthesis Method", () -> compareCategorical("Synthesis Method",
+                buildNamedCategorySql("real_samples", "rs", "synthesis_method_id", "synthesis_method_dict", "sm", "name", hasSynthesisMethodDict),
+                buildNamedCategorySql("gen_samples", "gs", "synthesis_method_id", "synthesis_method_dict", "sm", "name", hasSynthesisMethodDict),
+                0.15)));
 
-        scores.add(compareCategorical("Processing Route",
-                "SELECT COALESCE(pr.name, CAST(rs.processing_route_id AS STRING)) AS category, COUNT(*) AS cnt"
-                + " FROM real_samples rs LEFT JOIN processing_route_dict pr ON rs.processing_route_id = pr.id"
-                + " GROUP BY COALESCE(pr.name, CAST(rs.processing_route_id AS STRING))",
-                "SELECT COALESCE(pr.name, CAST(gs.processing_route_id AS STRING)) AS category, COUNT(*) AS cnt"
-                + " FROM gen_samples gs LEFT JOIN processing_route_dict pr ON gs.processing_route_id = pr.id"
-                + " GROUP BY COALESCE(pr.name, CAST(gs.processing_route_id AS STRING))",
-                0.10));
+        scores.add(evaluateDimension("Processing Route", () -> compareCategorical("Processing Route",
+                buildNamedCategorySql("real_samples", "rs", "processing_route_id", "processing_route_dict", "pr", "name", hasProcessingRouteDict),
+                buildNamedCategorySql("gen_samples", "gs", "processing_route_id", "processing_route_dict", "pr", "name", hasProcessingRouteDict),
+                0.10)));
 
-        scores.add(compareCategorical("Dopant Element",
+        scores.add(evaluateDimension("Dopant Element", () -> compareCategorical("Dopant Element",
                 "SELECT dopant_element AS category, COUNT(*) AS cnt FROM real_dopants GROUP BY dopant_element",
                 "SELECT dopant_element AS category, COUNT(*) AS cnt FROM gen_dopants GROUP BY dopant_element",
-                0.15));
+                0.15)));
 
-        scores.add(compareCategorical("Crystal Phase (Major)",
+        scores.add(evaluateDimension("Crystal Phase (Major)", () -> compareCategorical("Crystal Phase (Major)",
                 "SELECT CAST(crystal_id AS STRING) AS category, COUNT(*) AS cnt FROM real_phases WHERE CAST(is_major_phase AS INT) = 1 GROUP BY crystal_id",
                 "SELECT CAST(crystal_id AS STRING) AS category, COUNT(*) AS cnt FROM gen_phases WHERE CAST(is_major_phase AS INT) = 1 GROUP BY crystal_id",
-                0.10));
+                0.10)));
 
         // ==================== 数值分布对比 ====================
         System.out.println("\n--- Numerical Distribution Fidelity ---\n");
 
-        scores.add(compareNumerical("log10(Conductivity)",
+        scores.add(evaluateDimension("log10(Conductivity)", () -> compareNumerical("log10(Conductivity)",
                 "SELECT LOG10(conductivity) AS val FROM real_samples WHERE conductivity > 0",
                 "SELECT LOG10(conductivity) AS val FROM gen_samples WHERE conductivity > 0",
-                0.20));
+                0.20)));
 
-        scores.add(compareNumerical("Operating Temperature",
+        scores.add(evaluateDimension("Operating Temperature", () -> compareNumerical("Operating Temperature",
                 "SELECT CAST(operating_temperature AS DOUBLE) AS val FROM real_samples",
                 "SELECT operating_temperature AS val FROM gen_samples",
-                0.10));
+                0.10)));
 
-        scores.add(compareNumerical("Dopant Molar Fraction",
+        scores.add(evaluateDimension("Dopant Molar Fraction", () -> compareNumerical("Dopant Molar Fraction",
                 "SELECT CAST(dopant_molar_fraction AS DOUBLE) AS val FROM real_dopants",
                 "SELECT dopant_molar_fraction AS val FROM gen_dopants",
-                0.10));
+                0.10)));
 
-        scores.add(compareNumerical("Sintering Temperature",
+        scores.add(evaluateDimension("Sintering Temperature", () -> compareNumerical("Sintering Temperature",
                 "SELECT CAST(sintering_temperature AS DOUBLE) AS val FROM real_sintering",
                 "SELECT sintering_temperature AS val FROM gen_sintering",
-                0.05));
+                0.05)));
 
         // ==================== 联合分布对比 ====================
         System.out.println("\n--- Joint Distribution Fidelity ---\n");
 
-        scores.add(compareDopantConductivityCorrelation(0.05));
+        scores.add(evaluateDimension("Dopant-Conductivity Correlation",
+                () -> compareDopantConductivityCorrelation(0.05)));
 
         // ==================== 综合置信度 ====================
         double totalWeight = 0;
@@ -181,9 +183,32 @@ public class FidelityValidator implements Serializable {
 
     // ==================== 类别分布比较：Jensen-Shannon 散度 ====================
 
+    private DimensionScore evaluateDimension(String name, Supplier<DimensionScore> evaluator) {
+        try {
+            return evaluator.get();
+        } catch (Exception e) {
+            throw new RuntimeException("Fidelity dimension failed [" + name + "]", e);
+        }
+    }
+
+    private String buildNamedCategorySql(String sampleView, String sampleAlias,
+                                         String idColumn, String dictView, String dictAlias,
+                                         String nameColumn, boolean useDict) {
+        if (useDict) {
+            return "SELECT COALESCE(" + dictAlias + "." + nameColumn + ", CAST(" + sampleAlias + "." + idColumn + " AS STRING)) AS category, COUNT(*) AS cnt"
+                    + " FROM " + sampleView + " " + sampleAlias
+                    + " LEFT JOIN " + dictView + " " + dictAlias
+                    + " ON " + sampleAlias + "." + idColumn + " = " + dictAlias + ".id"
+                    + " GROUP BY COALESCE(" + dictAlias + "." + nameColumn + ", CAST(" + sampleAlias + "." + idColumn + " AS STRING))";
+        }
+        return "SELECT CAST(" + sampleAlias + "." + idColumn + " AS STRING) AS category, COUNT(*) AS cnt"
+                + " FROM " + sampleView + " " + sampleAlias
+                + " GROUP BY CAST(" + sampleAlias + "." + idColumn + " AS STRING)";
+    }
+
     private DimensionScore compareCategorical(String name, String realSql, String genSql, double weight) {
-        Map<String, Double> realDist = collectDistribution(realSql);
-        Map<String, Double> genDist = collectDistribution(genSql);
+        Map<String, Double> realDist = collectDistribution(name, "real", realSql);
+        Map<String, Double> genDist = collectDistribution(name, "generated", genSql);
 
         Set<String> allCategories = new HashSet<>();
         allCategories.addAll(realDist.keySet());
@@ -211,8 +236,9 @@ public class FidelityValidator implements Serializable {
         return new DimensionScore(name, similarity, weight);
     }
 
-    private Map<String, Double> collectDistribution(String sql) {
-        List<Row> rows = spark.sql(sql).collectAsList();
+    private Map<String, Double> collectDistribution(String dimensionName, String side, String sql) {
+        List<Row> rows = collectRows(
+                "categorical distribution [" + dimensionName + "] (" + side + ")", sql);
         double total = rows.stream().mapToDouble(r -> r.getLong(1)).sum();
         Map<String, Double> dist = new LinkedHashMap<>();
         for (Row r : rows) {
@@ -255,8 +281,10 @@ public class FidelityValidator implements Serializable {
                 + "STDDEV(val) AS std_val, PERCENTILE_APPROX(val, ARRAY(%s)) AS pcts, COUNT(*) AS cnt "
                 + "FROM (%s)", pctStr, genSql);
 
-        Row realRow = spark.sql(realStatSql).collectAsList().get(0);
-        Row genRow = spark.sql(genStatSql).collectAsList().get(0);
+        Row realRow = collectSingleRow(
+                "numerical statistics [" + name + "] (real)", realStatSql);
+        Row genRow = collectSingleRow(
+                "numerical statistics [" + name + "] (generated)", genStatSql);
 
         double realMin = realRow.getDouble(0), realMax = realRow.getDouble(1);
         double realMean = realRow.getDouble(2), realStd = realRow.isNullAt(3) ? 1.0 : realRow.getDouble(3);
@@ -342,10 +370,10 @@ public class FidelityValidator implements Serializable {
         Map<String, Double> realMap = new LinkedHashMap<>();
         Map<String, Double> genMap = new LinkedHashMap<>();
 
-        for (Row r : spark.sql(realSql).collectAsList()) {
+        for (Row r : collectRows("dopant-conductivity correlation (real)", realSql)) {
             realMap.put(r.getString(0), r.getDouble(1));
         }
-        for (Row r : spark.sql(genSql).collectAsList()) {
+        for (Row r : collectRows("dopant-conductivity correlation (generated)", genSql)) {
             genMap.put(r.getString(0), r.getDouble(1));
         }
 
@@ -404,6 +432,22 @@ public class FidelityValidator implements Serializable {
         double numerator = n * sumXY - sumX * sumY;
         double denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
         return denominator < 1e-10 ? 0 : numerator / denominator;
+    }
+
+    private List<Row> collectRows(String context, String sql) {
+        try {
+            return spark.sql(sql).collectAsList();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to execute " + context + " SQL:\n" + sql, e);
+        }
+    }
+
+    private Row collectSingleRow(String context, String sql) {
+        List<Row> rows = collectRows(context, sql);
+        if (rows.isEmpty()) {
+            throw new IllegalStateException("Query returned no rows for " + context + " SQL:\n" + sql);
+        }
+        return rows.get(0);
     }
 
     // ==================== 工具方法 ====================
