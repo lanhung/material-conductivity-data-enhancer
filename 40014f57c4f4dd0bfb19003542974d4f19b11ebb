@@ -1,0 +1,466 @@
+{
+    "version": "0.1.0",
+    "id": "23aad3a3-9ec1-4c32-b4f5-4c89f463cfc6",
+    "timestamp": "2026-04-14T02:46:28.526605337Z",
+    "vcs": {
+        "type": "git",
+        "revision": "40014f57c4f4dd0bfb19003542974d4f19b11ebb",
+        "origin": "github",
+        "repository": "https://github.com/lanhung/material-conductivity-data-enhancer.git"
+    },
+    "tool": {
+        "name": "chatter-cli"
+    },
+    "files": [
+        {
+            "path": "docs/cn/all_doc_v2.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:a2bf268215b7f9b6fdab950c75204eb4f540dc84",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 292,
+                            "end_line": 292
+                        },
+                        {
+                            "start_line": 1027,
+                            "end_line": 1029
+                        },
+                        {
+                            "start_line": 1037,
+                            "end_line": 1041
+                        },
+                        {
+                            "start_line": 1071,
+                            "end_line": 1072
+                        },
+                        {
+                            "start_line": 1104,
+                            "end_line": 1105
+                        }
+                    ]
+                },
+                {
+                    "url": "git+CODEX_CLI:blob:5e02249165fb624c5bbdc781465cac76090cf830",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 135,
+                            "end_line": 135
+                        },
+                        {
+                            "start_line": 281,
+                            "end_line": 281
+                        },
+                        {
+                            "start_line": 283,
+                            "end_line": 283
+                        },
+                        {
+                            "start_line": 289,
+                            "end_line": 290
+                        },
+                        {
+                            "start_line": 699,
+                            "end_line": 699
+                        },
+                        {
+                            "start_line": 842,
+                            "end_line": 842
+                        },
+                        {
+                            "start_line": 844,
+                            "end_line": 844
+                        },
+                        {
+                            "start_line": 853,
+                            "end_line": 853
+                        },
+                        {
+                            "start_line": 857,
+                            "end_line": 857
+                        },
+                        {
+                            "start_line": 866,
+                            "end_line": 866
+                        },
+                        {
+                            "start_line": 870,
+                            "end_line": 871
+                        },
+                        {
+                            "start_line": 876,
+                            "end_line": 876
+                        },
+                        {
+                            "start_line": 901,
+                            "end_line": 901
+                        },
+                        {
+                            "start_line": 904,
+                            "end_line": 904
+                        },
+                        {
+                            "start_line": 911,
+                            "end_line": 911
+                        },
+                        {
+                            "start_line": 915,
+                            "end_line": 918
+                        },
+                        {
+                            "start_line": 922,
+                            "end_line": 924
+                        },
+                        {
+                            "start_line": 932,
+                            "end_line": 944
+                        },
+                        {
+                            "start_line": 950,
+                            "end_line": 951
+                        },
+                        {
+                            "start_line": 956,
+                            "end_line": 958
+                        },
+                        {
+                            "start_line": 962,
+                            "end_line": 962
+                        },
+                        {
+                            "start_line": 968,
+                            "end_line": 977
+                        },
+                        {
+                            "start_line": 982,
+                            "end_line": 982
+                        },
+                        {
+                            "start_line": 990,
+                            "end_line": 995
+                        },
+                        {
+                            "start_line": 1003,
+                            "end_line": 1009
+                        },
+                        {
+                            "start_line": 1013,
+                            "end_line": 1014
+                        },
+                        {
+                            "start_line": 1024,
+                            "end_line": 1024
+                        },
+                        {
+                            "start_line": 1051,
+                            "end_line": 1053
+                        },
+                        {
+                            "start_line": 1055,
+                            "end_line": 1059
+                        },
+                        {
+                            "start_line": 1063,
+                            "end_line": 1065
+                        },
+                        {
+                            "start_line": 1085,
+                            "end_line": 1086
+                        },
+                        {
+                            "start_line": 1091,
+                            "end_line": 1091
+                        },
+                        {
+                            "start_line": 1121,
+                            "end_line": 1121
+                        },
+                        {
+                            "start_line": 1125,
+                            "end_line": 1133
+                        },
+                        {
+                            "start_line": 1137,
+                            "end_line": 1139
+                        },
+                        {
+                            "start_line": 1145,
+                            "end_line": 1147
+                        },
+                        {
+                            "start_line": 1149,
+                            "end_line": 1150
+                        },
+                        {
+                            "start_line": 1155,
+                            "end_line": 1157
+                        },
+                        {
+                            "start_line": 1176,
+                            "end_line": 1177
+                        },
+                        {
+                            "start_line": 1180,
+                            "end_line": 1180
+                        },
+                        {
+                            "start_line": 1184,
+                            "end_line": 1184
+                        },
+                        {
+                            "start_line": 1189,
+                            "end_line": 1189
+                        },
+                        {
+                            "start_line": 1194,
+                            "end_line": 1194
+                        },
+                        {
+                            "start_line": 1212,
+                            "end_line": 1212
+                        },
+                        {
+                            "start_line": 1214,
+                            "end_line": 1214
+                        },
+                        {
+                            "start_line": 1222,
+                            "end_line": 1224
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/en/all_doc_v2.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:a2bf268215b7f9b6fdab950c75204eb4f540dc84",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 993,
+                            "end_line": 998
+                        },
+                        {
+                            "start_line": 1030,
+                            "end_line": 1032
+                        },
+                        {
+                            "start_line": 1040,
+                            "end_line": 1044
+                        },
+                        {
+                            "start_line": 1074,
+                            "end_line": 1075
+                        },
+                        {
+                            "start_line": 1107,
+                            "end_line": 1108
+                        }
+                    ]
+                },
+                {
+                    "url": "git+CODEX_CLI:blob:5e02249165fb624c5bbdc781465cac76090cf830",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 138,
+                            "end_line": 138
+                        },
+                        {
+                            "start_line": 284,
+                            "end_line": 284
+                        },
+                        {
+                            "start_line": 286,
+                            "end_line": 286
+                        },
+                        {
+                            "start_line": 292,
+                            "end_line": 293
+                        },
+                        {
+                            "start_line": 295,
+                            "end_line": 295
+                        },
+                        {
+                            "start_line": 702,
+                            "end_line": 702
+                        },
+                        {
+                            "start_line": 845,
+                            "end_line": 845
+                        },
+                        {
+                            "start_line": 847,
+                            "end_line": 847
+                        },
+                        {
+                            "start_line": 856,
+                            "end_line": 856
+                        },
+                        {
+                            "start_line": 860,
+                            "end_line": 860
+                        },
+                        {
+                            "start_line": 869,
+                            "end_line": 869
+                        },
+                        {
+                            "start_line": 873,
+                            "end_line": 874
+                        },
+                        {
+                            "start_line": 879,
+                            "end_line": 879
+                        },
+                        {
+                            "start_line": 904,
+                            "end_line": 904
+                        },
+                        {
+                            "start_line": 907,
+                            "end_line": 907
+                        },
+                        {
+                            "start_line": 914,
+                            "end_line": 914
+                        },
+                        {
+                            "start_line": 918,
+                            "end_line": 921
+                        },
+                        {
+                            "start_line": 925,
+                            "end_line": 927
+                        },
+                        {
+                            "start_line": 935,
+                            "end_line": 947
+                        },
+                        {
+                            "start_line": 953,
+                            "end_line": 954
+                        },
+                        {
+                            "start_line": 959,
+                            "end_line": 961
+                        },
+                        {
+                            "start_line": 965,
+                            "end_line": 965
+                        },
+                        {
+                            "start_line": 971,
+                            "end_line": 980
+                        },
+                        {
+                            "start_line": 985,
+                            "end_line": 985
+                        },
+                        {
+                            "start_line": 1006,
+                            "end_line": 1012
+                        },
+                        {
+                            "start_line": 1016,
+                            "end_line": 1017
+                        },
+                        {
+                            "start_line": 1027,
+                            "end_line": 1027
+                        },
+                        {
+                            "start_line": 1054,
+                            "end_line": 1056
+                        },
+                        {
+                            "start_line": 1058,
+                            "end_line": 1062
+                        },
+                        {
+                            "start_line": 1066,
+                            "end_line": 1068
+                        },
+                        {
+                            "start_line": 1088,
+                            "end_line": 1089
+                        },
+                        {
+                            "start_line": 1094,
+                            "end_line": 1094
+                        },
+                        {
+                            "start_line": 1124,
+                            "end_line": 1124
+                        },
+                        {
+                            "start_line": 1128,
+                            "end_line": 1136
+                        },
+                        {
+                            "start_line": 1140,
+                            "end_line": 1142
+                        },
+                        {
+                            "start_line": 1148,
+                            "end_line": 1150
+                        },
+                        {
+                            "start_line": 1152,
+                            "end_line": 1153
+                        },
+                        {
+                            "start_line": 1158,
+                            "end_line": 1160
+                        },
+                        {
+                            "start_line": 1179,
+                            "end_line": 1180
+                        },
+                        {
+                            "start_line": 1183,
+                            "end_line": 1183
+                        },
+                        {
+                            "start_line": 1187,
+                            "end_line": 1187
+                        },
+                        {
+                            "start_line": 1192,
+                            "end_line": 1192
+                        },
+                        {
+                            "start_line": 1197,
+                            "end_line": 1197
+                        },
+                        {
+                            "start_line": 1215,
+                            "end_line": 1215
+                        },
+                        {
+                            "start_line": 1217,
+                            "end_line": 1217
+                        },
+                        {
+                            "start_line": 1225,
+                            "end_line": 1227
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
