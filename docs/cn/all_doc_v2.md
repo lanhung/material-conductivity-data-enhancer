@@ -132,7 +132,7 @@ material-conductivity-data-enhancer/
 有两个容易混淆但很重要的点：
 
 1. `data-sync-mysql2hive` 只负责把 MySQL 表写成 Parquet，不负责建 Hive 外表；真实数据 Hive 表需要单独执行 `sql/hive/create_external_tables.sql`。
-2. `data-generator-base-rule` 会直接创建并写入 Hive 外部表；当前 HDFS 跑法下，不需要额外执行 `sql/hive/create_external_tables_rule_based.sql`。
+2. `data-generator-base-rule` 会直接创建并写入 Hive 外部表；当前 v2 HDFS 跑法下，不需要额外执行 `sql/hive/create_external_tables_rule_based_v2.sql`。
 
 ---
 
@@ -278,18 +278,18 @@ sample_id = 10000001 + recipe_group_id * 8 + temperature_index
 | `totalRecipeGroups` | 25,000,000 |
 | `numPartitions` | 1,000 |
 | `outputPath` | `./output` |
-| `hiveDatabase` | `ods_zirconia_rule_based` |
+| `hiveDatabase` | `ods_zirconia_rule_based_v2` |
 
-当前提交脚本 `scripts/submit.sh` 使用的是：
+当前 v2 提交脚本 `scripts/submit-plan-e-final-original-layout.sh` 使用的是：
 
 | 参数 | 实际值 |
 |------|--------|
 | 配方组数 | 28,000,000 |
 | 分区数 | 2,000 |
-| 输出根目录 | `/data/material_conductivity_data` |
-| Hive 数据库 | `ods_zirconia_rule_based` |
+| 输出根目录 | `/data/material_conductivity_v2` |
+| Hive 数据库 | `ods_zirconia_rule_based_v2` |
 
-温度点数分布为 `3/4/5/6/7/8 = 40%/30%/20%/5%/3%/2%`，理论平均约 `4.07` 个温度点/组。以 28,000,000 个配方组计算，期望样本量约为 `113.96M`，和实际运行结果 `113,968,301` 条一致。
+温度点数分布为 `3/4/5/6/7/8 = 40%/30%/20%/5%/3%/2%`，理论平均约 `4.07` 个温度点/组。以 28,000,000 个配方组计算，理论样本量约为 `113.96M`；实际完整跑批的样本数会随生成批次和后续过滤策略变化，因此这里更适合作为规模量级估计，而不是固定的验证输出值。
 
 ### 4.2 生成流程
 
@@ -696,7 +696,7 @@ sql/hive/create_external_tables.sql
 - 单项 `violation_count = 0` 时视为通过
 - 整轮 HC 只有在所有检查项都通过时才视为通过
 
-`validation_run` 表里，`HARD_CONSTRAINT` 类型的 `overall_score` 不是独立评分模型，而是**所有 HC 项里最小的 pass rate**。因此原始数据这轮 HC 的 `99.99335867962093`，本质上就是 HC-7 的通过率，而不是“另一套 100 分制评分”。
+`validation_run` 表里，`HARD_CONSTRAINT` 类型的 `overall_score` 不是独立评分模型，而是**所有 HC 项里最小的 pass rate**。因此原始数据这轮 HC 的 `99.99873608897934`，本质上就是 HC-7 的通过率，而不是“另一套 100 分制评分”。
 
 ### 6.2 合规数据过滤
 
@@ -839,9 +839,9 @@ similarity = 0.5 * corrScore + 0.5 * rmseScore
 spark-submit \
   --class com.lanhung.conductivity.validator.DataValidatorApp \
   data-validator/target/data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based \
+  --database ods_zirconia_rule_based_v2 \
   --validate \
-  --output-path /data/material_conductivity_data/conductivity_validation_rule_based
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2
 ```
 
 **HC + Fidelity**
@@ -850,11 +850,11 @@ spark-submit \
 spark-submit \
   --class com.lanhung.conductivity.validator.DataValidatorApp \
   data-validator/target/data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based \
+  --database ods_zirconia_rule_based_v2 \
   --validate \
   --fidelity \
   --real-database ods_zirconia_conductivity_v2 \
-  --output-path /data/material_conductivity_data/conductivity_validation_rule_based
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2
 ```
 
 **HC + Fidelity + 合规过滤**
@@ -863,15 +863,17 @@ spark-submit \
 spark-submit \
   --class com.lanhung.conductivity.validator.DataValidatorApp \
   data-validator/target/data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based \
+  --database ods_zirconia_rule_based_v2 \
   --validate \
   --fidelity \
   --real-database ods_zirconia_conductivity_v2 \
-  --output-path /data/material_conductivity_data/conductivity_validation_rule_based \
-  --compliant-output-path /data/material_conductivity_data/conductivity_compliant_rule_based
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2 \
+  --compliant-output-path /data/material_conductivity_v2/ods_conductivity_compliant_rule_based_v2
 ```
 
 如果既不传 `--validate` 也不传 `--fidelity`，程序会默认执行 `HC`；但 `--output-path` 依然是必填项。
+
+`scripts/submit-data-validator.sh` 的最后一段命令用于对 `ods_conductivity_compliant_rule_based_v2` 做复验，对应本文第 7 章里的 `2026-04-14` 运行结果。
 
 #### 输出目录
 
@@ -896,30 +898,30 @@ spark-submit \
 
 ## 7. 运行结果分析
 
-以下分析基于 `2026-03-18` 的实际运行结果，结果文件位于：
+以下分析基于 `2026-04-13` 和 `2026-04-14` 的实际运行结果，结果文件位于：
 
 ```text
-/home/zxc/Desktop/run_result
+docs/result_v2
 ```
 
 这些 TSV 对应的是验证输出 Parquet 表的导出视图。
 
 ### 7.1 验证运行概览
 
-共 4 条运行记录，对应两轮数据库验证：
+共 4 条运行记录，对应原始 v2 数据与合规 v2 数据两轮验证：
 
 | run_id | 类型 | 数据库 | 总样本数 | 结果 | overall_score | run_at |
 |--------|------|--------|----------|------|---------------|--------|
-| 1773800129257 | HARD_CONSTRAINT | `ods_zirconia_rule_based` | 113,968,301 | FAIL | 99.99335867962093 | 2026-03-18 10:15:29 |
-| 1773801307603 | FIDELITY | `ods_zirconia_rule_based` | 113,968,301 | GOOD | 0.846548985171353 | 2026-03-18 10:35:07 |
-| 1773802503281 | HARD_CONSTRAINT | `conductivity_compliant_rule_based` | 113,960,665 | PASS | 100.0 | 2026-03-18 10:55:03 |
-| 1773802681046 | FIDELITY | `conductivity_compliant_rule_based` | 113,960,665 | GOOD | 0.8465469724349198 | 2026-03-18 10:58:01 |
+| 1776064352809 | HARD_CONSTRAINT | `ods_zirconia_rule_based_v2` | 100,007,040 | FAIL | 99.99873608897934 | 2026-04-13 15:12:32 |
+| 1776065204878 | FIDELITY | `ods_zirconia_rule_based_v2` | 100,007,040 | GOOD | 0.8640317372280062 | 2026-04-13 15:26:44 |
+| 1776130873472 | HARD_CONSTRAINT | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | PASS | 100 | 2026-04-14 09:41:13 |
+| 1776131049790 | FIDELITY | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | GOOD | 0.8640322957399598 | 2026-04-14 09:44:09 |
 
 **关键结论**
 
-- 原始规则生成数据 HC 未通过，合规过滤后 HC 全部通过
-- 合规过滤后样本量减少 `7,636` 条，占原始数据的约 `0.0067%`
-- 两轮 Fidelity 总分仅相差约 `2.0e-6`，说明被过滤样本对整体统计分布几乎没有影响
+- 原始 v2 规则生成数据 HC 仅在 `HC-7` 和 `HC-8` 上未通过，合规过滤后 HC 全部通过
+- 合规过滤后样本量减少 `1,327` 条，占原始数据的约 `0.0013%`
+- 两轮 Fidelity 总分几乎不变，且合规数据还微升约 `5.6e-7`，说明被过滤样本对整体统计分布几乎没有影响
 
 ### 7.2 硬约束验证结果
 
@@ -927,58 +929,57 @@ spark-submit \
 
 | 约束 | 检查总量 | 违规数 | 通过率 |
 |------|----------|--------|--------|
-| HC-1 | 113,960,665 | 0 | 100% |
-| HC-2a | 190,961,722 | 0 | 100% |
-| HC-2b | 190,961,722 | 0 | 100% |
-| HC-3 | 113,960,665 | 0 | 100% |
-| HC-4 | 113,960,665 | 0 | 100% |
-| HC-5 | 113,960,665 | 0 | 100% |
-| HC-6a | 113,960,665 | 0 | 100% |
-| HC-6b | 110,543,958 | 0 | 100% |
-| HC-6c | 113,960,665 | 0 | 100% |
-| HC-7 | 113,960,665 | 0 | 100% |
-| HC-8 | 113,960,665 | 0 | 100% |
-| HC-9 | 113,960,665 | 0 | 100% |
-| HC-10 | 113,960,665 | 0 | 100% |
+| HC-1 | 100,005,713 | 0 | 100% |
+| HC-2a | 167,569,923 | 0 | 100% |
+| HC-2b | 167,569,923 | 0 | 100% |
+| HC-3 | 100,005,713 | 0 | 100% |
+| HC-4 | 100,005,713 | 0 | 100% |
+| HC-5 | 100,005,713 | 0 | 100% |
+| HC-6a | 100,005,713 | 0 | 100% |
+| HC-6b | 97,010,244 | 0 | 100% |
+| HC-6c | 100,005,713 | 0 | 100% |
+| HC-7 | 100,005,713 | 0 | 100% |
+| HC-8 | 100,005,713 | 0 | 100% |
+| HC-9 | 100,005,713 | 0 | 100% |
+| HC-10 | 100,005,713 | 0 | 100% |
 
 #### 原始数据集：两项失败
 
 | 约束 | 违规数 | 通过率 |
 |------|--------|--------|
-| HC-7 | 7,569 | 99.99335867962093% |
-| HC-8 | 67 | 99.99994121172342% |
+| HC-7 | 1,264 | 99.99873608897934% |
+| HC-8 | 63 | 99.99993700443488% |
 | 其余 11 项 | 0 | 100% |
 
 #### 结果解读
 
-- `HC-7` 说明原始结果集中仍存在“同一配方组内相邻温度点 `conductivity <= prev_conductivity`”的样本。代码已经在生成端做了单调修正，因此这里更适合表述为“仍有落表后的严格单调性违规”，而不宜直接写成某一种唯一根因。
-- 结合实现，**上限截断到 `1.0` 后形成平顶值**是一个值得优先核查的方向，但这属于推测，需要结合违规 `sample_id` 回查。
-- `HC-8` 的 67 条记录表示仍有少量样本触发了验证器定义的两类单相禁配规则；结果文件本身只能说明“存在边界样本”，不能单独定位到生成逻辑中的唯一失配点。
+- 原始 v2 数据当前只剩 `HC-7` 和 `HC-8` 两类尾部违规，其中 `HC-7` 为 `1,264` 条、`HC-8` 为 `63` 条，占比都非常低。
+- 结果文件本身只能说明“最终落表数据里仍存在少量严格单调性违规”和“仍有极少量单相禁配边界样本”，无法单独定位到唯一根因，仍需结合违规 `sample_id` / `recipe_group_id` 回查。
+- 合规过滤后 HC 全部 100% 通过，说明当前过滤链路已经足以把这部分尾部违规样本稳定剔除。
 
 ### 7.3 保真度评估结果
 
-以下以合规数据集 `run_id = 1773802681046` 为主。
+以下以合规数据集 `run_id = 1776131049790` 为主。
 
 #### 7.3.1 各维度得分总览
 
 | 维度 | 得分 | 权重 | 加权得分 | 评级 |
 |------|------|------|---------|------|
-| Dopant Element | 0.9835843887491135 | 15% | 0.147537658312367 | EXCELLENT |
-| Sintering Temperature | 0.9070680363507568 | 5% | 0.045353401817537844 | EXCELLENT |
-| Synthesis Method | 0.8825221129602756 | 15% | 0.13237831694404134 | GOOD |
-| Operating Temperature | 0.8739760564322571 | 10% | 0.08739760564322571 | GOOD |
-| Processing Route | 0.8718721676437372 | 10% | 0.08718721676437373 | GOOD |
-| Crystal Phase (Major) | 0.8705712805578834 | 10% | 0.08705712805578834 | GOOD |
-| Dopant Molar Fraction | 0.8084147878644956 | 10% | 0.08084147878644957 | GOOD |
-| log10(Conductivity) | 0.7682388115930227 | 20% | 0.15364776231860455 | GOOD |
-| Dopant-Conductivity Correlation | 0.5029280758506336 | 5% | 0.02514640379253168 | POOR |
-| **综合得分** |  |  | **0.8465469724349198** | **GOOD** |
+| Dopant Element | 0.983579854542093 | 15% | 0.14753697818131395 | EXCELLENT |
+| Sintering Temperature | 0.9070683998357505 | 5% | 0.045353419991787526 | EXCELLENT |
+| Synthesis Method | 0.8825280168513817 | 15% | 0.13237920252770724 | GOOD |
+| Operating Temperature | 0.8739536607521723 | 10% | 0.08739536607521724 | GOOD |
+| Processing Route | 0.8718796654473151 | 10% | 0.08718796654473152 | GOOD |
+| Crystal Phase (Major) | 0.8705872327510655 | 10% | 0.08705872327510655 | GOOD |
+| Dopant-Conductivity Correlation | 0.8446302026217843 | 5% | 0.04223151013108922 | GOOD |
+| Dopant Molar Fraction | 0.8084145609916732 | 10% | 0.08084145609916732 | GOOD |
+| log10(Conductivity) | 0.7702383645691955 | 20% | 0.1540476729138391 | GOOD |
+| **综合得分** |  |  | **0.8640322957399598** | **GOOD** |
 
 整体评级分布为：
 
 - 2 个 `EXCELLENT`
-- 6 个 `GOOD`
-- 1 个 `POOR`
+- 7 个 `GOOD`
 
 #### 7.3.2 分类维度分析
 
@@ -986,12 +987,12 @@ spark-submit \
 
 | 元素 | 真实占比 | 生成占比 | 差值 |
 |------|---------|---------|------|
-| Y | 37.9022% | 34.0950% | -3.8071% |
-| Sc | 32.9220% | 31.1544% | -1.7676% |
-| Yb | 8.7704% | 10.5989% | +1.8285% |
-| Ce | 7.0075% | 4.6839% | -2.3236% |
-| Dy | 3.9665% | 3.7283% | -0.2382% |
-| Bi | 3.1732% | 3.7215% | +0.5483% |
+| Y | 37.9022% | 34.0946% | -3.8075% |
+| Sc | 32.9220% | 31.1573% | -1.7647% |
+| Yb | 8.7704% | 10.5974% | +1.8270% |
+| Ce | 7.0075% | 4.6830% | -2.3245% |
+| Dy | 3.9665% | 3.7297% | -0.2368% |
+| Bi | 3.1732% | 3.7207% | +0.5475% |
 
 这一维度得分很高，说明当前掺杂元素频率权重已经比较接近真实数据。
 
@@ -999,17 +1000,18 @@ spark-submit \
 
 | 方法 | 真实占比 | 生成占比 | 差值 |
 |------|---------|---------|------|
-| Solid-state synthesis | 45.3738% | 45.6001% | +0.2263% |
-| Commercialization | 19.9112% | 19.9984% | +0.0872% |
-| Hydrothermal synthesis | 17.4685% | 4.9986% | -12.4699% |
-| Sol–gel method | 8.8823% | 11.9931% | +3.1108% |
-| Coprecipitation method | 0% | 10.0086% | +10.0086% |
-| / | 2.1466% | 0.9981% | -1.1485% |
+| Solid-state synthesis | 45.3738% | 45.6069% | +0.2331% |
+| Commercialization | 19.9112% | 19.9960% | +0.0848% |
+| Hydrothermal synthesis | 17.4685% | 4.9982% | -12.4704% |
+| Sol–gel method | 8.8823% | 11.9936% | +3.1113% |
+| Coprecipitation method | 0% | 10.0054% | +10.0054% |
+| Coprecipitation | 0% | 2.0006% | +2.0006% |
+| / | 2.1466% | 0.9964% | -1.1502% |
 
 这里的偏差和生成器当前枚举/权重完全一致：
 
-- `Coprecipitation method` 在生成器中固定占 `10%`
-- `Coprecipitation` 还额外占 `2%`
+- `Coprecipitation method` 在生成器中固定占约 `10%`
+- `Coprecipitation` 还额外占约 `2%`
 
 如果真实基准里这两个类别不存在或命名体系不同，JSD 会明显上升。
 
@@ -1019,12 +1021,12 @@ spark-submit \
 
 | 工艺 | 真实占比 | 生成占比 | 差值 |
 |------|---------|---------|------|
-| dry pressing | 80.0148% | 80.3931% | +0.3783% |
+| dry pressing | 80.0148% | 80.3938% | +0.3790% |
 | 3D printing | 6.7358% | 0% | -6.7358% |
 | vacuum filtration | 2.3686% | 0% | -2.3686% |
-| RF sputtering | 0.1480% | 2.9981% | +2.8501% |
-| spray pyrolysis | 0.0740% | 2.6012% | +2.5272% |
-| spark plasma sintering | 0.0740% | 8.0023% | +7.9283% |
+| RF sputtering | 0.1480% | 2.9953% | +2.8473% |
+| spray pyrolysis | 0.0740% | 2.6006% | +2.5266% |
+| spark plasma sintering | 0.0740% | 8.0041% | +7.9301% |
 
 这个结果和代码完全一致：字典表虽然支持 19 个工艺，但生成分布只实际采样 6 个，因此很多真实类别必然缺失。
 
@@ -1032,11 +1034,11 @@ spark-submit \
 
 | 晶相 | 真实占比 | 生成占比 | 差值 |
 |------|---------|---------|------|
-| 1 (Cubic) | 86.8891% | 53.0087% | -33.8804% |
-| 2 (Tetragonal) | 6.2064% | 31.2968% | +25.0904% |
-| 3 (Monoclinic) | 6.9046% | 9.2642% | +2.3596% |
-| 4 (Orthogonal) | 0% | 2.3301% | +2.3301% |
-| 5 (Rhombohedral) | 0% | 4.1003% | +4.1003% |
+| 1 (Cubic) | 86.8891% | 53.0114% | -33.8776% |
+| 2 (Tetragonal) | 6.2064% | 31.2935% | +25.0872% |
+| 3 (Monoclinic) | 6.9046% | 9.2644% | +2.3598% |
+| 4 (Orthogonal) | 0% | 2.3302% | +2.3302% |
+| 5 (Rhombohedral) | 0% | 4.1004% | +4.1004% |
 
 这说明当前 `PHASE_DIST_*` 参数更偏向生成 `tetragonal / orthogonal / rhombohedral`，而真实数据显著偏向 `cubic`。
 
@@ -1046,28 +1048,28 @@ spark-submit \
 
 | 统计量 | 真实数据 | 生成数据 | 差值 |
 |--------|---------|---------|------|
-| Count | 1,351 | 113,960,665 | — |
-| Mean | -2.1133 | -2.4391 | -0.3257 |
-| Std | 0.9584 | 1.3061 | +0.3477 |
+| Count | 1,351 | 100,005,713 | — |
+| Mean | -2.1133 | -2.4624 | -0.3490 |
+| Std | 0.9584 | 1.2755 | +0.3172 |
 | Min | -7.01 | -8.00 | -0.99 |
-| P5 | -3.8711 | -5.0597 | -1.1886 |
-| P50 | -1.9452 | -2.1767 | -0.2315 |
-| P95 | -0.8675 | -0.7925 | +0.0750 |
-| Pct_RMSE | 0.083643 | 0.083643 | — |
-| Std_Ratio | 0.733785 | 0.733785 | — |
+| P5 | -3.8711 | -5.0520 | -1.1809 |
+| P50 | -1.9452 | -2.1735 | -0.2283 |
+| P95 | -0.8675 | -0.8941 | -0.0266 |
+| Pct_RMSE | 0.083374 | 0.083374 | — |
+| Std_Ratio | 0.751359 | 0.751359 | — |
 
 结论：
 
-- 生成数据整体偏向更低的电导率
-- 分布比真实数据更宽
-- 高分位区间相对接近，低分位区间偏差更明显
+- `log10(Conductivity)` 仍然是当前最低分的维度，但已经稳定落在 `GOOD`
+- 生成数据整体偏向更低的电导率，且低分位尾部偏低更明显
+- 中高分位区间已经比较接近，说明当前主要差距集中在低尾和整体离散度
 
 **Operating Temperature**
 
 | 统计量 | 真实数据 | 生成数据 | 差值 |
 |--------|---------|---------|------|
-| Mean | 726.0264 | 711.3070 | -14.7194 |
-| Std | 165.3772 | 187.5754 | +22.1982 |
+| Mean | 726.0264 | 711.3150 | -14.7114 |
+| Std | 165.3772 | 187.6038 | +22.2266 |
 | Min | 290 | 300 | +10 |
 | P5 | 500 | 389 | -111 |
 | P50 | 700 | 717 | +17 |
@@ -1080,13 +1082,13 @@ spark-submit \
 
 | 统计量 | 真实数据 | 生成数据 | 差值 |
 |--------|---------|---------|------|
-| Mean | 0.0932518 | 0.0608535 | -0.0323983 |
-| Std | 0.8658486 | 0.0418967 | -0.8239519 |
+| Mean | 0.0932518 | 0.0608552 | -0.0323966 |
+| Std | 0.8658486 | 0.0418956 | -0.8240 |
 | Min | 0.001 | 0.001 | 0 |
 | P50 | 0.06 | 0.0527 | -0.0073 |
 | P95 | 0.11 | 0.1337 | +0.0237 |
 | Max | 35.0 | 0.2 | -34.8 |
-| Std_Ratio | 0.0483880 | 0.0483880 | — |
+| Std_Ratio | 0.0483867 | 0.0483867 | — |
 
 这里最需要谨慎解读：
 
@@ -1099,8 +1101,8 @@ spark-submit \
 
 | 统计量 | 真实数据 | 生成数据 | 差值 |
 |--------|---------|---------|------|
-| Mean | 1417.5916 | 1425.7480 | +8.1564 |
-| Std | 147.1596 | 133.0144 | -14.1452 |
+| Mean | 1417.5916 | 1425.7452 | +8.1536 |
+| Std | 147.1596 | 133.0138 | -14.1458 |
 | Min | 425 | 1000 | +575 |
 | P5 | 1100 | 1200 | +100 |
 | P50 | 1400 | 1450 | +50 |
@@ -1116,42 +1118,43 @@ spark-submit \
 
 #### 7.3.4 相关性维度分析
 
-`Dopant-Conductivity Correlation` 是当前最弱的维度：
+`Dopant-Conductivity Correlation` 这一维度已经提升到 `GOOD`，不再是当前主要短板：
 
 | 元素 | 真实值 | 生成值 | 差值 |
 |------|--------|--------|------|
-| Sc | -1.5381 | -1.3076 | +0.2305 |
-| Y | -1.8322 | -1.9924 | -0.1602 |
-| Ca | -2.2362 | -2.4091 | -0.1729 |
-| Pr | -2.3614 | -2.7386 | -0.3772 |
-| Dy | -1.7652 | -2.2373 | -0.4721 |
-| Lu | -0.8599 | -1.4305 | -0.5706 |
-| Ce | -1.5147 | -2.1204 | -0.6057 |
-| Yb | -2.5684 | -1.7317 | +0.8367 |
-| Bi | -1.4872 | -2.6388 | -1.1517 |
+| Sc | -1.5381 | -1.5377 | +0.0004 |
+| Y | -1.8322 | -1.8323 | -0.0001 |
+| Dy | -1.7652 | -1.8174 | -0.0522 |
+| Ca | -2.2362 | -2.3292 | -0.0930 |
+| Pr | -2.3614 | -2.5490 | -0.1876 |
+| Ce | -1.5147 | -1.7503 | -0.2356 |
+| Yb | -2.5684 | -2.3218 | +0.2466 |
+| Lu | -0.8599 | -1.2003 | -0.3404 |
+| Bi | -1.4872 | -1.9490 | -0.4619 |
 
 这说明：
 
-- 各主掺杂元素在 700~900°C 区间的相对排序和绝对值都还有明显偏差
-- 优化优先级应落在 `baseSigmaLog10`、活化能范围，以及晶相/烧结修正的联合作用上
+- `Sc` 和 `Y` 两个主元素已经几乎与真实值重合，说明核心元素排序基本稳定
+- 仍然偏差较大的元素主要集中在 `Bi`、`Lu`、`Ce`、`Yb`
+- 下一步若继续优化，更优先的是收敛整体电导率分布；相关性维度可以针对这些元素做定向校准
 
 ### 7.4 原始数据 vs 合规数据
 
 | 指标 | 原始数据 | 合规数据 |
 |------|----------|----------|
-| 数据库 | `ods_zirconia_rule_based` | `conductivity_compliant_rule_based` |
-| 样本量 | 113,968,301 | 113,960,665 |
-| 过滤数量 | — | 7,636 |
+| 数据库 | `ods_zirconia_rule_based_v2` | `ods_conductivity_compliant_rule_based_v2` |
+| 样本量 | 100,007,040 | 100,005,713 |
+| 过滤数量 | — | 1,327 |
 | HC 结果 | FAIL | PASS |
-| HC 失败项 | HC-7: 7,569；HC-8: 67 | 无 |
-| Fidelity 总分 | 0.846548985171353 | 0.8465469724349198 |
+| HC 失败项 | HC-7: 1,264；HC-8: 63 | 无 |
+| Fidelity 总分 | 0.8640317372280062 | 0.8640322957399598 |
 | Fidelity 评级 | GOOD | GOOD |
 
 结论：
 
-- 合规过滤只移除了极少量样本
-- 对整体 Fidelity 几乎没有影响
-- 但它确实把原始数据从“统计分布看起来还行，但存在规则违规”提升到“规则上也合规”
+- 合规过滤只移除了 `1,327` 条样本，数量级非常小
+- 对整体 Fidelity 几乎没有影响，且综合分数还略有提升
+- 这说明当前 v2 管线已经能在几乎不改变统计分布的前提下，把结果稳定提升到“规则上也合规”
 
 ---
 
@@ -1170,24 +1173,25 @@ spark-submit \
    sql/hive/create_external_tables.sql
 
 4. 生成规则数据
-   scripts/submit.sh
-   说明：这一步会直接创建并写入 ods_zirconia_rule_based 下的外部表
+   scripts/submit-plan-e-final-original-layout.sh
+   说明：这一步会直接创建并写入 ods_zirconia_rule_based_v2 下的外部表
 
 5. 运行验证，并按需要输出合规数据
+   scripts/submit-plan-e-final-original-layout-validator.sh
    scripts/submit-data-validator.sh
 
 6. 若已产出合规数据目录，再为其创建 Hive 外部表
-   sql/hive/conductivity_compliant_rule_based.sql
+   sql/hive/conductivity_compliant_rule_based_v2.sql
 ```
 
 补充说明：
 
-- `sql/hive/create_external_tables_rule_based.sql` 适合本地默认 `./output` 的场景或手工回放，不是当前 HDFS 提交脚本的必需步骤。
+- `sql/hive/create_external_tables_rule_based_v2.sql` 适合需要显式补建 v2 原始库外部表的场景；对当前 HDFS 提交脚本并不是必需步骤。
 - `scripts/submit-data-validator.sh` 当前包含多段 `spark-submit`，分别对应原始数据验证、带过滤的验证，以及对合规库的复验。
 
 ### 8.2 当前脚本资源配置
 
-**生成任务 (`scripts/submit.sh`)**
+**生成任务 (`scripts/submit-plan-e-final-original-layout.sh`)**
 
 | 参数 | 值 |
 |------|-----|
@@ -1205,9 +1209,9 @@ spark-submit \
 
 | 阶段 | deploy-mode | executors | executor-memory | executor-cores |
 |------|-------------|-----------|-----------------|----------------|
-| 原始库 HC + Fidelity | cluster | 12 | 8g | 6 |
+| 原始 v2 库 HC + Fidelity | cluster | 12 | 8g | 6 |
 | 带合规过滤输出 | client / cluster（脚本中都有） | 6 | 6g | 4 |
-| 合规库复验 | cluster | 6 | 6g | 4 |
+| 合规 v2 库复验 | client | 6 | 6g | 4 |
 
 ### 8.3 数据库与路径映射
 
@@ -1215,9 +1219,9 @@ spark-submit \
 |------|------|----------|
 | `zirconia_conductivity_v2` | MySQL 真实源库 | MySQL |
 | `ods_zirconia_conductivity_v2` | 真实数据 Hive 外部库 | `/data/material_conductivity_data/ods_zirconia_conductivity_v2` |
-| `ods_zirconia_rule_based` | 原始规则生成数据 | `/data/material_conductivity_data/ods_zirconia_rule_based` |
-| `conductivity_compliant_rule_based` | 合规过滤后的生成数据 | `/data/material_conductivity_data/conductivity_compliant_rule_based` |
-| `conductivity_validation_rule_based` | 验证结果目录/库的上游数据源 | `/data/material_conductivity_data/conductivity_validation_rule_based` |
+| `ods_zirconia_rule_based_v2` | 原始规则生成数据 | `/data/material_conductivity_v2/ods_zirconia_rule_based_v2` |
+| `ods_conductivity_compliant_rule_based_v2` | 合规过滤后的生成数据 | `/data/material_conductivity_v2/ods_conductivity_compliant_rule_based_v2` |
+| `conductivity_validation_rule_based_v2` | 验证结果目录/库的上游数据源 | `/data/material_conductivity_v2/conductivity_validation_rule_based_v2` |
 
 ---
 
