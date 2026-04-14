@@ -1,0 +1,37 @@
+{
+    "version": "0.1.0",
+    "id": "898260f0-c87e-4db3-a389-57ae4561775d",
+    "timestamp": "2026-04-14T02:42:06.437811666Z",
+    "vcs": {
+        "type": "git",
+        "revision": "0609fd8006041b3cdce424a82b7549a880519193",
+        "origin": "github",
+        "repository": "https://github.com/lanhung/material-conductivity-data-enhancer.git"
+    },
+    "tool": {
+        "name": "chatter-cli"
+    },
+    "files": [
+        {
+            "path": "data-generator-base-rule/src/main/java/com/lanhung/conductivity/config/PhysicsConstants.java",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:b90b36b80a6977f9c4d6a46c1ed94b5e9ae128a5",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 95,
+                            "end_line": 100
+                        },
+                        {
+                            "start_line": 103,
+                            "end_line": 105
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
