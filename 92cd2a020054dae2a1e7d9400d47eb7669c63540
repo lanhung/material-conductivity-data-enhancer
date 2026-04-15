@@ -1,0 +1,904 @@
+{
+    "version": "0.1.0",
+    "id": "c5b1601c-c110-4afb-b39a-d56a5731ee29",
+    "timestamp": "2026-04-15T03:15:16.522172971Z",
+    "vcs": {
+        "type": "git",
+        "revision": "92cd2a020054dae2a1e7d9400d47eb7669c63540",
+        "origin": "github",
+        "repository": "https://github.com/lanhung/material-conductivity-data-enhancer.git"
+    },
+    "tool": {
+        "name": "chatter-cli"
+    },
+    "files": [
+        {
+            "path": "docs/cn/all_doc.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 3,
+                            "end_line": 3
+                        },
+                        {
+                            "start_line": 112,
+                            "end_line": 112
+                        }
+                    ]
+                },
+                {
+                    "url": "git+CODEX_CLI:blob:9096d656862e406a7a3e366be0bb55f5532a802b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 506,
+                            "end_line": 512
+                        },
+                        {
+                            "start_line": 514,
+                            "end_line": 520
+                        },
+                        {
+                            "start_line": 522,
+                            "end_line": 522
+                        },
+                        {
+                            "start_line": 524,
+                            "end_line": 530
+                        },
+                        {
+                            "start_line": 532,
+                            "end_line": 533
+                        },
+                        {
+                            "start_line": 536,
+                            "end_line": 536
+                        },
+                        {
+                            "start_line": 542,
+                            "end_line": 542
+                        },
+                        {
+                            "start_line": 544,
+                            "end_line": 545
+                        },
+                        {
+                            "start_line": 551,
+                            "end_line": 554
+                        },
+                        {
+                            "start_line": 558,
+                            "end_line": 563
+                        },
+                        {
+                            "start_line": 567,
+                            "end_line": 567
+                        },
+                        {
+                            "start_line": 571,
+                            "end_line": 583
+                        },
+                        {
+                            "start_line": 585,
+                            "end_line": 585
+                        },
+                        {
+                            "start_line": 589,
+                            "end_line": 590
+                        },
+                        {
+                            "start_line": 595,
+                            "end_line": 597
+                        },
+                        {
+                            "start_line": 601,
+                            "end_line": 601
+                        },
+                        {
+                            "start_line": 607,
+                            "end_line": 616
+                        },
+                        {
+                            "start_line": 618,
+                            "end_line": 618
+                        },
+                        {
+                            "start_line": 622,
+                            "end_line": 622
+                        },
+                        {
+                            "start_line": 626,
+                            "end_line": 631
+                        },
+                        {
+                            "start_line": 633,
+                            "end_line": 633
+                        },
+                        {
+                            "start_line": 635,
+                            "end_line": 635
+                        },
+                        {
+                            "start_line": 639,
+                            "end_line": 645
+                        },
+                        {
+                            "start_line": 647,
+                            "end_line": 647
+                        },
+                        {
+                            "start_line": 649,
+                            "end_line": 650
+                        },
+                        {
+                            "start_line": 652,
+                            "end_line": 652
+                        },
+                        {
+                            "start_line": 654,
+                            "end_line": 654
+                        },
+                        {
+                            "start_line": 656,
+                            "end_line": 656
+                        },
+                        {
+                            "start_line": 658,
+                            "end_line": 665
+                        },
+                        {
+                            "start_line": 667,
+                            "end_line": 667
+                        },
+                        {
+                            "start_line": 669,
+                            "end_line": 669
+                        },
+                        {
+                            "start_line": 673,
+                            "end_line": 677
+                        },
+                        {
+                            "start_line": 679,
+                            "end_line": 679
+                        },
+                        {
+                            "start_line": 683,
+                            "end_line": 683
+                        },
+                        {
+                            "start_line": 687,
+                            "end_line": 695
+                        },
+                        {
+                            "start_line": 697,
+                            "end_line": 697
+                        },
+                        {
+                            "start_line": 699,
+                            "end_line": 703
+                        },
+                        {
+                            "start_line": 707,
+                            "end_line": 713
+                        },
+                        {
+                            "start_line": 715,
+                            "end_line": 715
+                        },
+                        {
+                            "start_line": 717,
+                            "end_line": 717
+                        },
+                        {
+                            "start_line": 721,
+                            "end_line": 727
+                        },
+                        {
+                            "start_line": 729,
+                            "end_line": 729
+                        },
+                        {
+                            "start_line": 731,
+                            "end_line": 732
+                        },
+                        {
+                            "start_line": 734,
+                            "end_line": 734
+                        },
+                        {
+                            "start_line": 736,
+                            "end_line": 736
+                        },
+                        {
+                            "start_line": 740,
+                            "end_line": 746
+                        },
+                        {
+                            "start_line": 748,
+                            "end_line": 748
+                        },
+                        {
+                            "start_line": 750,
+                            "end_line": 751
+                        },
+                        {
+                            "start_line": 753,
+                            "end_line": 753
+                        },
+                        {
+                            "start_line": 755,
+                            "end_line": 755
+                        },
+                        {
+                            "start_line": 757,
+                            "end_line": 757
+                        },
+                        {
+                            "start_line": 761,
+                            "end_line": 769
+                        },
+                        {
+                            "start_line": 771,
+                            "end_line": 771
+                        },
+                        {
+                            "start_line": 773,
+                            "end_line": 775
+                        },
+                        {
+                            "start_line": 779,
+                            "end_line": 779
+                        },
+                        {
+                            "start_line": 781,
+                            "end_line": 786
+                        },
+                        {
+                            "start_line": 789,
+                            "end_line": 789
+                        },
+                        {
+                            "start_line": 791,
+                            "end_line": 794
+                        },
+                        {
+                            "start_line": 809,
+                            "end_line": 810
+                        },
+                        {
+                            "start_line": 812,
+                            "end_line": 814
+                        },
+                        {
+                            "start_line": 816,
+                            "end_line": 817
+                        },
+                        {
+                            "start_line": 820,
+                            "end_line": 821
+                        },
+                        {
+                            "start_line": 824,
+                            "end_line": 824
+                        },
+                        {
+                            "start_line": 826,
+                            "end_line": 827
+                        },
+                        {
+                            "start_line": 844,
+                            "end_line": 845
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/cn/all_doc_v2.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:5e02249165fb624c5bbdc781465cac76090cf830",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 969,
+                            "end_line": 969
+                        }
+                    ]
+                },
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 200,
+                            "end_line": 200
+                        },
+                        {
+                            "start_line": 250,
+                            "end_line": 250
+                        },
+                        {
+                            "start_line": 254,
+                            "end_line": 254
+                        },
+                        {
+                            "start_line": 685,
+                            "end_line": 685
+                        },
+                        {
+                            "start_line": 720,
+                            "end_line": 720
+                        },
+                        {
+                            "start_line": 909,
+                            "end_line": 912
+                        },
+                        {
+                            "start_line": 921,
+                            "end_line": 921
+                        },
+                        {
+                            "start_line": 923,
+                            "end_line": 925
+                        },
+                        {
+                            "start_line": 929,
+                            "end_line": 931
+                        },
+                        {
+                            "start_line": 964,
+                            "end_line": 964
+                        },
+                        {
+                            "start_line": 1164,
+                            "end_line": 1165
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/cn/data-validator-overview.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 66,
+                            "end_line": 66
+                        },
+                        {
+                            "start_line": 74,
+                            "end_line": 74
+                        },
+                        {
+                            "start_line": 85,
+                            "end_line": 85
+                        },
+                        {
+                            "start_line": 155,
+                            "end_line": 159
+                        },
+                        {
+                            "start_line": 231,
+                            "end_line": 231
+                        },
+                        {
+                            "start_line": 233,
+                            "end_line": 234
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/cn/fidelity-evaluation-methodology.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 3,
+                            "end_line": 3
+                        },
+                        {
+                            "start_line": 48,
+                            "end_line": 49
+                        },
+                        {
+                            "start_line": 51,
+                            "end_line": 51
+                        },
+                        {
+                            "start_line": 167,
+                            "end_line": 167
+                        },
+                        {
+                            "start_line": 169,
+                            "end_line": 169
+                        },
+                        {
+                            "start_line": 171,
+                            "end_line": 171
+                        },
+                        {
+                            "start_line": 173,
+                            "end_line": 179
+                        },
+                        {
+                            "start_line": 183,
+                            "end_line": 183
+                        },
+                        {
+                            "start_line": 185,
+                            "end_line": 188
+                        },
+                        {
+                            "start_line": 190,
+                            "end_line": 190
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/en/all_doc.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 3,
+                            "end_line": 3
+                        },
+                        {
+                            "start_line": 112,
+                            "end_line": 112
+                        }
+                    ]
+                },
+                {
+                    "url": "git+CODEX_CLI:blob:9096d656862e406a7a3e366be0bb55f5532a802b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 506,
+                            "end_line": 512
+                        },
+                        {
+                            "start_line": 514,
+                            "end_line": 520
+                        },
+                        {
+                            "start_line": 522,
+                            "end_line": 522
+                        },
+                        {
+                            "start_line": 524,
+                            "end_line": 530
+                        },
+                        {
+                            "start_line": 532,
+                            "end_line": 533
+                        },
+                        {
+                            "start_line": 536,
+                            "end_line": 536
+                        },
+                        {
+                            "start_line": 542,
+                            "end_line": 542
+                        },
+                        {
+                            "start_line": 544,
+                            "end_line": 545
+                        },
+                        {
+                            "start_line": 551,
+                            "end_line": 554
+                        },
+                        {
+                            "start_line": 558,
+                            "end_line": 563
+                        },
+                        {
+                            "start_line": 567,
+                            "end_line": 567
+                        },
+                        {
+                            "start_line": 571,
+                            "end_line": 583
+                        },
+                        {
+                            "start_line": 585,
+                            "end_line": 585
+                        },
+                        {
+                            "start_line": 589,
+                            "end_line": 590
+                        },
+                        {
+                            "start_line": 595,
+                            "end_line": 597
+                        },
+                        {
+                            "start_line": 601,
+                            "end_line": 601
+                        },
+                        {
+                            "start_line": 607,
+                            "end_line": 616
+                        },
+                        {
+                            "start_line": 618,
+                            "end_line": 618
+                        },
+                        {
+                            "start_line": 622,
+                            "end_line": 622
+                        },
+                        {
+                            "start_line": 626,
+                            "end_line": 631
+                        },
+                        {
+                            "start_line": 633,
+                            "end_line": 633
+                        },
+                        {
+                            "start_line": 635,
+                            "end_line": 635
+                        },
+                        {
+                            "start_line": 639,
+                            "end_line": 645
+                        },
+                        {
+                            "start_line": 647,
+                            "end_line": 647
+                        },
+                        {
+                            "start_line": 649,
+                            "end_line": 650
+                        },
+                        {
+                            "start_line": 652,
+                            "end_line": 652
+                        },
+                        {
+                            "start_line": 654,
+                            "end_line": 654
+                        },
+                        {
+                            "start_line": 656,
+                            "end_line": 656
+                        },
+                        {
+                            "start_line": 658,
+                            "end_line": 665
+                        },
+                        {
+                            "start_line": 667,
+                            "end_line": 667
+                        },
+                        {
+                            "start_line": 669,
+                            "end_line": 669
+                        },
+                        {
+                            "start_line": 673,
+                            "end_line": 677
+                        },
+                        {
+                            "start_line": 679,
+                            "end_line": 679
+                        },
+                        {
+                            "start_line": 683,
+                            "end_line": 683
+                        },
+                        {
+                            "start_line": 687,
+                            "end_line": 689
+                        },
+                        {
+                            "start_line": 691,
+                            "end_line": 695
+                        },
+                        {
+                            "start_line": 697,
+                            "end_line": 697
+                        },
+                        {
+                            "start_line": 699,
+                            "end_line": 701
+                        },
+                        {
+                            "start_line": 703,
+                            "end_line": 703
+                        },
+                        {
+                            "start_line": 707,
+                            "end_line": 713
+                        },
+                        {
+                            "start_line": 715,
+                            "end_line": 715
+                        },
+                        {
+                            "start_line": 717,
+                            "end_line": 717
+                        },
+                        {
+                            "start_line": 721,
+                            "end_line": 725
+                        },
+                        {
+                            "start_line": 727,
+                            "end_line": 727
+                        },
+                        {
+                            "start_line": 729,
+                            "end_line": 729
+                        },
+                        {
+                            "start_line": 731,
+                            "end_line": 732
+                        },
+                        {
+                            "start_line": 734,
+                            "end_line": 734
+                        },
+                        {
+                            "start_line": 736,
+                            "end_line": 736
+                        },
+                        {
+                            "start_line": 740,
+                            "end_line": 746
+                        },
+                        {
+                            "start_line": 748,
+                            "end_line": 748
+                        },
+                        {
+                            "start_line": 750,
+                            "end_line": 751
+                        },
+                        {
+                            "start_line": 753,
+                            "end_line": 753
+                        },
+                        {
+                            "start_line": 755,
+                            "end_line": 755
+                        },
+                        {
+                            "start_line": 757,
+                            "end_line": 757
+                        },
+                        {
+                            "start_line": 761,
+                            "end_line": 769
+                        },
+                        {
+                            "start_line": 771,
+                            "end_line": 771
+                        },
+                        {
+                            "start_line": 773,
+                            "end_line": 775
+                        },
+                        {
+                            "start_line": 779,
+                            "end_line": 779
+                        },
+                        {
+                            "start_line": 781,
+                            "end_line": 786
+                        },
+                        {
+                            "start_line": 789,
+                            "end_line": 789
+                        },
+                        {
+                            "start_line": 791,
+                            "end_line": 794
+                        },
+                        {
+                            "start_line": 809,
+                            "end_line": 810
+                        },
+                        {
+                            "start_line": 812,
+                            "end_line": 814
+                        },
+                        {
+                            "start_line": 816,
+                            "end_line": 817
+                        },
+                        {
+                            "start_line": 820,
+                            "end_line": 821
+                        },
+                        {
+                            "start_line": 824,
+                            "end_line": 824
+                        },
+                        {
+                            "start_line": 826,
+                            "end_line": 827
+                        },
+                        {
+                            "start_line": 844,
+                            "end_line": 845
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/en/all_doc_v2.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 203,
+                            "end_line": 203
+                        },
+                        {
+                            "start_line": 253,
+                            "end_line": 253
+                        },
+                        {
+                            "start_line": 257,
+                            "end_line": 257
+                        },
+                        {
+                            "start_line": 688,
+                            "end_line": 688
+                        },
+                        {
+                            "start_line": 723,
+                            "end_line": 723
+                        },
+                        {
+                            "start_line": 912,
+                            "end_line": 915
+                        },
+                        {
+                            "start_line": 924,
+                            "end_line": 928
+                        },
+                        {
+                            "start_line": 932,
+                            "end_line": 934
+                        },
+                        {
+                            "start_line": 967,
+                            "end_line": 967
+                        },
+                        {
+                            "start_line": 972,
+                            "end_line": 972
+                        },
+                        {
+                            "start_line": 1167,
+                            "end_line": 1168
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/en/data-validator-overview.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 66,
+                            "end_line": 66
+                        },
+                        {
+                            "start_line": 74,
+                            "end_line": 74
+                        },
+                        {
+                            "start_line": 85,
+                            "end_line": 85
+                        },
+                        {
+                            "start_line": 155,
+                            "end_line": 159
+                        },
+                        {
+                            "start_line": 231,
+                            "end_line": 234
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "docs/en/fidelity-evaluation-methodology.md",
+            "conversations": [
+                {
+                    "url": "git+CODEX_CLI:blob:147060ed3ed82537ac5b4b91ef8cea9a125e3f1b",
+                    "contributor": {
+                        "type": "ai"
+                    },
+                    "ranges": [
+                        {
+                            "start_line": 3,
+                            "end_line": 3
+                        },
+                        {
+                            "start_line": 48,
+                            "end_line": 49
+                        },
+                        {
+                            "start_line": 51,
+                            "end_line": 51
+                        },
+                        {
+                            "start_line": 167,
+                            "end_line": 167
+                        },
+                        {
+                            "start_line": 169,
+                            "end_line": 169
+                        },
+                        {
+                            "start_line": 171,
+                            "end_line": 179
+                        },
+                        {
+                            "start_line": 183,
+                            "end_line": 183
+                        },
+                        {
+                            "start_line": 185,
+                            "end_line": 188
+                        },
+                        {
+                            "start_line": 190,
+                            "end_line": 190
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
