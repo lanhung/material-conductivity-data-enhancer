@@ -63,7 +63,7 @@ Although the result table annotations list `HC-1 ~ HC-10`, the actual number of 
 | `HC-6a` | `sample_dopants.sample_id` must all exist in the main table | `sample_dopants.sample_id` -> `material_samples.sample_id` |
 | `HC-6b` | `sintering_steps.sample_id` must all exist in the main table | `sintering_steps.sample_id` -> `material_samples.sample_id` |
 | `HC-6c` | `sample_crystal_phases.sample_id` must all exist in the main table | `sample_crystal_phases.sample_id` -> `material_samples.sample_id` |
-| `HC-7` | Within the same composition group, conductivity must increase as temperature increases | `material_samples.operating_temperature`, `material_samples.conductivity`, combined with `sample_dopants` to generate a composition fingerprint |
+| `HC-7` | Within the same composition group, conductivity must increase as temperature increases | When read through the current Hive tables, it is usually derived from `sample_id`; if the runtime DataFrame directly exposes Parquet `recipe_group_id`, that is used first |
 | `HC-8` | Crystal phase and dopant level coupling: low dopant levels cannot have pure cubic major phase; high dopant levels cannot have pure monoclinic major phase | `sample_dopants`, `sample_crystal_phases`, `crystal_structure_dict` |
 | `HC-9` | Conductivity must be within the range `[1e-8, 1.0]` | `material_samples.conductivity` |
 | `HC-10` | Operating temperature must be within the range `[300, 1400]` | `material_samples.operating_temperature` |
@@ -71,7 +71,7 @@ Although the result table annotations list `HC-1 ~ HC-10`, the actual number of 
 ### 2.3 Implementation Details to Be Aware Of
 
 - `HC-3` uses `0.3005` as the threshold, effectively allowing a small floating-point tolerance around `0.30`
-- `HC-7` groups by `synthesis_method_id`, `processing_route_id`, and dopant fingerprint together, not by `sample_id`
+- `HC-7` does not require `recipe_group_id` to exist in the Hive table schema; when data is read through the current Hive tables, that column is usually unavailable, so the validator first derives the recipe group from `sample_id`; if the runtime DataFrame directly carries the underlying Parquet `recipe_group_id`, it can also use that; only otherwise does it fall back to grouping by `synthesis_method_id`, `processing_route_id`, and dopant fingerprint
 - `HC-8` depends on the `crystal_structure_dict` dictionary table; if this table is missing or has an unexpected structure, this check may error out and cause the entire `HC` run to fail
 
 ## 3. Purpose and Output of Fidelity
@@ -81,6 +81,8 @@ Although the result table annotations list `HC-1 ~ HC-10`, the actual number of 
 When running fidelity validation, a real data source must be provided:
 
 - `--real-database <hiveDatabase>`
+
+The current implementation reads the 4 real-data tables directly from that Hive database rather than from a local TSV directory.
 
 The current implementation compares the following three categories of information between real and generated data.
 
@@ -149,6 +151,12 @@ In the current project, when encountering such results, the typical priority sho
 2. Then continue optimizing `Fidelity`
 
 The reason is that `HC` is the baseline threshold, while `Fidelity` is a quality score.
+
+The latest v2 run is a good example:
+
+- The raw database `ods_zirconia_rule_based_v2` already achieved `GOOD` Fidelity (`0.8640317372280062`), but HC still failed because `HC-7 = 1,264` and `HC-8 = 63`
+- After compliant filtering and re-validation, `ods_conductivity_compliant_rule_based_v2` became `HC = PASS`, while Fidelity still remained `GOOD (0.8640322957399598)`
+- This is exactly how the current v2 workflow should be interpreted: first filter anomalies, then perform quality validation on the filtered dataset
 
 ### 4.2 Recommended Troubleshooting Order
 
@@ -219,3 +227,8 @@ Where:
 - `fidelity_categorical` is used to view categorical distribution differences
 - `fidelity_numerical` is used to view numerical statistics differences
 - `fidelity_correlation` is used to view differences in the dopant element-conductivity association
+
+Additional note:
+
+- At runtime, these results are written as Parquet directories under `--output-path`
+- `docs/result_v2/*.tsv` are exported documentation views of those result tables for offline analysis and reporting

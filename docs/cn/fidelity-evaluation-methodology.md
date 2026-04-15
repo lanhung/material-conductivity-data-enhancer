@@ -1,6 +1,6 @@
 # 保真度评估方法论
 
-本文档详细描述生成数据与真实实验数据之间的保真度（Fidelity）评估体系。评估由 `FidelityValidator` 执行，对比 1,351 条真实 ZrO₂ 离子电导率实验记录与生成数据的统计分布，输出 0~1 的综合置信度分数（真实数据 = 1.0）。
+本文档详细描述生成数据与真实实验数据之间的保真度（Fidelity）评估体系。评估由 `FidelityValidator` 执行，当前实现会从 `--real-database` 指定的 Hive 数据库读取真实基线，对比其中 1,351 条真实 ZrO₂ 离子电导率实验记录与生成数据的统计分布，输出 0~1 的综合置信度分数（真实数据 = 1.0）。
 
 ## 1. 评估维度与权重
 
@@ -45,10 +45,10 @@ Similarity = 1 - Normalized JSD   ∈ [0, 1]
 
 | 维度 | 真实数据 SQL | 生成数据 SQL |
 |------|-------------|-------------|
-| Synthesis Method | `material_samples.synthesis_method` 频率 | 同 |
-| Processing Route | `material_samples.processing_route` 频率 | 同 |
+| Synthesis Method | `material_samples.synthesis_method_id` 左连接 `synthesis_method_dict.name`；若字典缺失则退回比较 ID 字符串 | 同 |
+| Processing Route | `material_samples.processing_route_id` 左连接 `processing_route_dict.name`；若字典缺失则退回比较 ID 字符串 | 同 |
 | Dopant Element | `sample_dopants.dopant_element` 频率 | 同 |
-| Crystal Phase (Major) | `sample_crystal_phases` 中 `is_major_phase=1` 的 `crystal_id` 频率 | 同 |
+| Crystal Phase (Major) | `sample_crystal_phases` 中 `is_major_phase=1` 的 `crystal_id` 字符串频率 | 同 |
 
 ### 注意事项
 
@@ -164,24 +164,27 @@ overall = Σ(dimensionᵢ.score × dimensionᵢ.weight) / Σ(dimensionᵢ.weight
 | ≥ 0.60 | FAIR | 明显差异，需审查分布细节 |
 | < 0.60 | POOR | 显著偏离，需调整生成器参数 |
 
-## 6. 输出文件
+## 6. 输出结果
 
-评估结果输出到 `{outputPath}/fidelity_report/` 目录：
+当前实现会把结果以 Parquet 目录形式写到 `--output-path` 下：
 
-| 文件 | 内容 |
+| 目录 | 内容 |
 |------|------|
-| `fidelity_summary.csv` | 各维度分数、权重、加权分数、评级，以及综合分数 |
-| `fidelity_categorical.csv` | 每个类别维度的各类别真实占比、生成占比、差值 |
-| `fidelity_numerical.csv` | 每个数值维度的 Count/Mean/Std/Min/P5-P95/Max、Pct_RMSE、Std_Ratio |
-| `fidelity_correlation.csv` | 各掺杂元素在 700-900°C 的真实/生成平均 log₁₀(电导率) 及差值 |
+| `validation_run` | 每次 Fidelity 运行一条汇总记录，包含 `overall_score` 与 `overall_grade` |
+| `fidelity_summary` | 各维度分数、权重、加权分数、评级，以及综合分数 |
+| `fidelity_categorical` | 每个类别维度的各类别真实占比、生成占比、差值 |
+| `fidelity_numerical` | 每个数值维度的 Count/Mean/Std/Min/P5-P95/Max、Pct_RMSE、Std_Ratio |
+| `fidelity_correlation` | 各掺杂元素在 700-900°C 的真实/生成平均 log₁₀(电导率) 及差值 |
+
+`docs/result_v2/*.tsv` 是这些结果表导出后的文档视图，不是运行时直接写出的原始格式。
 
 ## 7. 真实数据基准
 
-真实数据来源于 `real-data/` 目录下的 TSV 文件（从 MySQL 导出的 1,351 条实验记录），包含 4 个表：
+当前运行时的真实数据基线来自 `--real-database` 指定的 Hive 数据库，例如 `ods_zirconia_conductivity_v2`，包含 4 个表：
 
-- `material_samples.tsv` — 样本主表
-- `sample_dopants.tsv` — 掺杂信息
-- `sintering_steps.tsv` — 烧结步骤
-- `sample_crystal_phases.tsv` — 晶相信息
+- `material_samples`
+- `sample_dopants`
+- `sintering_steps`
+- `sample_crystal_phases`
 
-这些数据作为评估的"黄金标准"，置信度定义为 1.0。
+这些表是评估时的“黄金标准”，置信度定义为 1.0。若仓库中另有 TSV 导出文件，它们更适合作为离线快照，而不是当前代码的运行时输入源。

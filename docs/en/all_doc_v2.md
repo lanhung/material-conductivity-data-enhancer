@@ -200,7 +200,7 @@ The real data source database is `zirconia_conductivity_v2`. The real experiment
 
 The logical tables written by the generation module are still 4 main fact tables, but there are two key differences compared to real data:
 
-- All four fact tables additionally include `recipe_group_id`
+- The underlying output Parquet files physically contain `recipe_group_id`, but the current Hive table definitions do not expose this field, so it is normally invisible from the Hive-table perspective
 - Sub-tables no longer retain the auto-increment `id` from the real data
 
 Key fields on the generation side are as follows:
@@ -210,7 +210,6 @@ Key fields on the generation side are as follows:
 | Field | Type | Description |
 |-------|------|-------------|
 | `sample_id` | BIGINT | Sample unique identifier |
-| `recipe_group_id` | BIGINT | Recipe group ID |
 | `reference` | STRING | Fixed value: `RULE_BASED_SYNTHETIC` |
 | `material_source_and_purity` | STRING | Source text |
 | `synthesis_method_id` | INT | Synthesis method dictionary foreign key |
@@ -223,7 +222,6 @@ Key fields on the generation side are as follows:
 | Field | Type | Description |
 |-------|------|-------------|
 | `sample_id` | BIGINT | References main table |
-| `recipe_group_id` | BIGINT | Recipe group ID |
 | `dopant_element` | STRING | Dopant element |
 | `dopant_ionic_radius` | DOUBLE | Ionic radius |
 | `dopant_valence` | INT | Valence |
@@ -234,7 +232,6 @@ Key fields on the generation side are as follows:
 | Field | Type | Description |
 |-------|------|-------------|
 | `sample_id` | BIGINT | References main table |
-| `recipe_group_id` | BIGINT | Recipe group ID |
 | `step_order` | INT | Sintering step sequence number |
 | `sintering_temperature` | DOUBLE | Sintering temperature |
 | `sintering_duration` | DOUBLE | Sintering duration |
@@ -244,7 +241,6 @@ Key fields on the generation side are as follows:
 | Field | Type | Description |
 |-------|------|-------------|
 | `sample_id` | BIGINT | References main table |
-| `recipe_group_id` | BIGINT | Recipe group ID |
 | `crystal_id` | INT | Crystal phase dictionary foreign key |
 | `is_major_phase` | BOOLEAN | Whether it is the major phase |
 
@@ -254,11 +250,11 @@ The `sample_id` encoding rule on the generation side is:
 sample_id = 10000001 + recipe_group_id * 8 + temperature_index
 ```
 
-Here, `8` is used as a fixed block size for sample_id per recipe group, even if the actual number of temperature points is fewer than 8.
+Here, `8` is used as a fixed block size for sample_id per recipe group, even if the actual number of temperature points is fewer than 8. In other words, `recipe_group_id` exists in the underlying Parquet files, but the current Hive table definitions do not expose it as a table field.
 
 ### 3.4 Structural Differences and Usage Notes
 
-- The validator preferentially uses `recipe_group_id` to execute HC-7; only if the data lacks this column does it attempt to derive it from `sample_id`.
+- If the runtime DataFrame still carries `recipe_group_id`, the validator uses it first for HC-7; when data is read through the current Hive tables, this column is usually unavailable, so HC-7 typically derives the recipe group from `sample_id`.
 - On the real data side, `sample_dopants` / `sintering_steps` have an `id` column; the generated data side does not, and validation and Fidelity do not depend on these `id` values.
 - In the code, `crystal_structure_dict` determines crystal phases like `c` / `m` via the `code` field, not via `full_name`.
 
@@ -689,7 +685,7 @@ The current implementation has 13 check items:
 | HC-6a | `sample_dopants.sample_id` can all be found in the main table | Referential integrity |
 | HC-6b | `sintering_steps.sample_id` can all be found in the main table | Referential integrity |
 | HC-6c | `sample_crystal_phases.sample_id` can all be found in the main table | Referential integrity |
-| HC-7 | Within the same recipe group, conductivity strictly increases as temperature increases | Uses `recipe_group_id` preferentially |
+| HC-7 | Within the same recipe group, conductivity strictly increases as temperature increases | Uses `recipe_group_id` when the runtime DataFrame exposes it; when reading through current Hive tables, usually derives from `sample_id` |
 | HC-8 | Crystal phase–dopant forbidden combinations | Only checks "low-doping pure cubic" and "high-doping pure monoclinic" |
 | HC-9 | `conductivity` in `[1e-8, 1.0]` | Range check |
 | HC-10 | `operating_temperature` in `[300, 1400]` | Range check |
@@ -723,6 +719,8 @@ The 4 filtered fact tables and available dictionary tables are rewritten to:
   ├── processing_route_dict   (if available)
   └── crystal_structure_dict  (if available)
 ```
+
+In the current v2 pipeline, this step is the core purpose of the first pass: run HC/Fidelity on the raw rule-generated database `ods_zirconia_rule_based_v2`, produce the compliant database `ods_conductivity_compliant_rule_based_v2`, and then perform a second HC + Fidelity re-validation on that compliant database to confirm that "after removing anomalous samples, all rules pass and the statistical distribution remains stable."
 
 ### 6.3 Fidelity Assessment
 
@@ -911,7 +909,10 @@ These TSV files correspond to exported views of the validation output Parquet ta
 
 ### 7.1 Validation Run Overview
 
-There are 4 run records in total, corresponding to two rounds of validation for the raw v2 dataset and the compliant v2 dataset:
+There are 4 run records in total, but they are not four unrelated jobs. They form one continuous two-stage workflow:
+
+- Stage 1: detect anomalous records in the raw v2 rule-generated dataset and produce the compliant database
+- Stage 2: re-validate the compliant database to confirm that the filtered result can be used as the stable version
 
 | run_id | Type | Database | Total Samples | Result | overall_score | run_at |
 |--------|------|----------|---------------|--------|---------------|--------|
@@ -920,11 +921,17 @@ There are 4 run records in total, corresponding to two rounds of validation for 
 | 1776130873472 | HARD_CONSTRAINT | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | PASS | 100 | 2026-04-14 09:41:13 |
 | 1776131049790 | FIDELITY | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | GOOD | 0.8640322957399598 | 2026-04-14 09:44:09 |
 
+Interpreted by stage, these four records are easier to read:
+
+- `2026-04-13`: the raw database still contained a small tail of `HC-7` / `HC-8` violations, while its overall Fidelity had already reached `GOOD`
+- `2026-04-14`: the compliant database was then re-validated, yielding `HC = PASS` while Fidelity remained `GOOD`
+
 **Key Conclusions**
 
 - The raw v2 rule-generated data failed HC only on `HC-7` and `HC-8`; after compliant filtering, all HC checks passed
-- The compliant filtering reduced the sample count by `1,327` records, approximately `0.0013%` of the raw data
-- The two rounds of Fidelity scores are effectively unchanged, and the compliant dataset is even slightly higher by about `5.6e-7`, indicating that the filtered samples had virtually no impact on the overall statistical distribution
+- The compliant filtering reduced the sample count by `1,327` records, which is `0.0013269066%` of the raw data
+- The overall Fidelity score increased by only `5.5855e-7`; all 9 per-dimension score changes stayed within the `4e-6` scale, indicating that the filtered samples had virtually no impact on the overall statistical distribution
+- At the aggregate level, the filtered count `1,327` happens to equal `HC-7 (1,264) + HC-8 (63)`. The safer interpretation is that the removed samples were concentrated almost entirely in these two tail-risk categories, although the summary tables alone cannot prove that there was zero overlap
 
 ### 7.2 Hard Constraint Validation Results
 
@@ -957,12 +964,12 @@ There are 4 run records in total, corresponding to two rounds of validation for 
 #### Results Interpretation
 
 - The raw v2 dataset now has only two tail-risk HC items left: `HC-7` with `1,264` violations and `HC-8` with `63` violations. Both proportions are extremely low.
-- The result files alone can only confirm that "a small number of strict monotonicity violations remain in the final written data" and that "a very small number of forbidden single-phase boundary samples still exist." They cannot, by themselves, pinpoint a single root cause; that still requires tracing the violating `sample_id` / `recipe_group_id`.
+- The result files alone can only confirm that "a small number of strict monotonicity violations remain in the final written data" and that "a very small number of forbidden single-phase boundary samples still exist." They cannot, by themselves, pinpoint a single root cause; that still requires tracing the violating `sample_id` values and, when needed, checking the underlying Parquet `recipe_group_id` or a recipe-group identity derived from `sample_id`.
 - After compliant filtering, all HC items pass at 100%, indicating that the current filtering stage is sufficient to remove this remaining tail of violating samples.
 
 ### 7.3 Fidelity Assessment Results
 
-The following is based primarily on the compliant dataset `run_id = 1776131049790`.
+The following is based primarily on the compliant dataset `run_id = 1776131049790`, because this is the final result of the second-stage "post-filter quality re-validation."
 
 #### 7.3.1 Dimension Score Overview
 
@@ -1157,7 +1164,8 @@ Conclusions:
 
 - Compliant filtering removed only `1,327` samples, which is extremely small at this scale
 - It had virtually no impact on overall Fidelity, and the composite score even improved slightly
-- This shows that the current v2 pipeline can now raise the result from "statistically reasonable but still containing rule violations" to "also compliant at the rule level" without materially changing the distribution
+- This shows that the first pass is mainly about removing a very small tail of non-compliant samples, while the second pass confirms that the filtered dataset still resembles real data
+- The current v2 pipeline can now move the result from "statistically reasonable but still containing rule violations" to "also compliant at the rule level" without materially changing the distribution
 
 ---
 

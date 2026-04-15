@@ -63,7 +63,7 @@
 | `HC-6a` | `sample_dopants.sample_id` 必须都能在主表中找到 | `sample_dopants.sample_id` -> `material_samples.sample_id` |
 | `HC-6b` | `sintering_steps.sample_id` 必须都能在主表中找到 | `sintering_steps.sample_id` -> `material_samples.sample_id` |
 | `HC-6c` | `sample_crystal_phases.sample_id` 必须都能在主表中找到 | `sample_crystal_phases.sample_id` -> `material_samples.sample_id` |
-| `HC-7` | 同一配方组内满足“温度升高，电导率也升高” | `material_samples.operating_temperature`、`material_samples.conductivity`，并结合 `sample_dopants` 生成配方指纹 |
+| `HC-7` | 同一配方组内满足“温度升高，电导率也升高” | 通过当前 Hive 表读取时通常根据 `sample_id` 推导；若运行时 DataFrame 直接暴露了 Parquet 中的 `recipe_group_id`，则优先使用它 |
 | `HC-8` | 晶相与掺杂量耦合：低掺杂时不能是纯立方主相，高掺杂时不能是纯单斜主相 | `sample_dopants`、`sample_crystal_phases`、`crystal_structure_dict` |
 | `HC-9` | 电导率必须在 `[1e-8, 1.0]` 范围内 | `material_samples.conductivity` |
 | `HC-10` | 工作温度必须在 `[300, 1400]` 范围内 | `material_samples.operating_temperature` |
@@ -71,7 +71,7 @@
 ### 2.3 使用时需要注意的实现细节
 
 - `HC-3` 的实现里使用了 `0.3005` 作为判定阈值，等价于对 `0.30` 留出一小段浮点容差
-- `HC-7` 的“同一配方组”不是按 `sample_id` 分组，而是按 `synthesis_method_id`、`processing_route_id` 和掺杂指纹共同分组
+- `HC-7` 不要求 Hive 表结构里真实存在 `recipe_group_id`；当前通过 Hive 表读取时，这个列通常不可见，因此会先根据 `sample_id` 反推配方组；若运行时 DataFrame 直接带着底层 Parquet 里的 `recipe_group_id`，验证器也会直接使用；再不满足时，才回退到 `synthesis_method_id`、`processing_route_id` 和掺杂指纹联合分组
 - `HC-8` 依赖 `crystal_structure_dict` 字典表；如果该表缺失或结构不符合预期，该项可能报错，并导致整轮 `HC` 失败
 
 ## 3. Fidelity 的作用与输出
@@ -81,6 +81,8 @@
 运行保真度验证时，需要提供真实数据来源：
 
 - `--real-database <hiveDatabase>`
+
+当前实现会直接从这个 Hive 数据库读取 4 张真实表，不是从本地 TSV 目录直接读取。
 
 当前实现会从真实数据和生成数据中对比以下三类信息。
 
@@ -149,6 +151,12 @@
 2. 再继续优化 `Fidelity`
 
 原因是 `HC` 是底线门槛，而 `Fidelity` 是质量评分。
+
+最新 v2 结果就是一个典型例子：
+
+- 原始库 `ods_zirconia_rule_based_v2` 的 Fidelity 已经是 `GOOD (0.8640317372280062)`，但 HC 仍因 `HC-7 = 1,264`、`HC-8 = 63` 而失败
+- 合规过滤后再复验，`ods_conductivity_compliant_rule_based_v2` 变为 `HC = PASS`，同时 Fidelity 仍保持 `GOOD (0.8640322957399598)`
+- 这说明“先筛异常，再对筛后数据做质量检测”正是当前 v2 流程的正确解读
 
 ### 4.2 建议的排查顺序
 
@@ -219,3 +227,8 @@
 - `fidelity_categorical` 用于查看类别分布差异
 - `fidelity_numerical` 用于查看数值统计量差异
 - `fidelity_correlation` 用于查看掺杂元素与电导率关联的差异
+
+补充说明：
+
+- 运行时这些结果会以 Parquet 目录形式写到 `--output-path` 下
+- `docs/result_v2/*.tsv` 是这些结果表导出后的文档视图，方便做离线分析和写报告

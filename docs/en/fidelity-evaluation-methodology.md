@@ -1,6 +1,6 @@
 # Fidelity Evaluation Methodology
 
-This document describes in detail the fidelity evaluation framework for comparing generated data against real experimental data. The evaluation is performed by `FidelityValidator`, which compares the statistical distributions of 1,351 real ZrO₂ ionic conductivity experimental records with those of the generated data, and outputs a composite confidence score ranging from 0 to 1 (real data = 1.0).
+This document describes in detail the fidelity evaluation framework for comparing generated data against real experimental data. The evaluation is performed by `FidelityValidator`, which currently reads the real baseline from the Hive database specified by `--real-database`, compares the statistical distributions of 1,351 real ZrO₂ ionic conductivity experimental records against the generated data, and outputs a composite confidence score ranging from 0 to 1 (real data = 1.0).
 
 ## 1. Evaluation Dimensions and Weights
 
@@ -45,10 +45,10 @@ Similarity = 1 - Normalized JSD   ∈ [0, 1]
 
 | Dimension | Real Data SQL | Generated Data SQL |
 |-----------|---------------|-------------------|
-| Synthesis Method | `material_samples.synthesis_method` frequency | Same |
-| Processing Route | `material_samples.processing_route` frequency | Same |
+| Synthesis Method | `material_samples.synthesis_method_id` left-joined to `synthesis_method_dict.name`; if the dictionary is missing, it falls back to comparing the ID string | Same |
+| Processing Route | `material_samples.processing_route_id` left-joined to `processing_route_dict.name`; if the dictionary is missing, it falls back to comparing the ID string | Same |
 | Dopant Element | `sample_dopants.dopant_element` frequency | Same |
-| Crystal Phase (Major) | `crystal_id` frequency where `is_major_phase=1` in `sample_crystal_phases` | Same |
+| Crystal Phase (Major) | String frequency of `crystal_id` where `is_major_phase=1` in `sample_crystal_phases` | Same |
 
 ### Notes
 
@@ -164,24 +164,27 @@ overall = Σ(dimensionᵢ.score × dimensionᵢ.weight) / Σ(dimensionᵢ.weight
 | ≥ 0.60 | FAIR | Notable differences; distribution details should be reviewed |
 | < 0.60 | POOR | Significant deviation; generator parameters need adjustment |
 
-## 6. Output Files
+## 6. Output Results
 
-Evaluation results are written to the `{outputPath}/fidelity_report/` directory:
+The current implementation writes results as Parquet directories under `--output-path`:
 
-| File | Contents |
-|------|----------|
-| `fidelity_summary.csv` | Per-dimension scores, weights, weighted scores, ratings, and overall score |
-| `fidelity_categorical.csv` | Real and generated proportions and their differences for each category within each categorical dimension |
-| `fidelity_numerical.csv` | Count/Mean/Std/Min/P5-P95/Max, Pct_RMSE, and Std_Ratio for each numerical dimension |
-| `fidelity_correlation.csv` | Real and generated average log₁₀(conductivity) and their differences for each dopant element at 700-900°C |
+| Directory | Contents |
+|-----------|----------|
+| `validation_run` | One summary record per Fidelity run, including `overall_score` and `overall_grade` |
+| `fidelity_summary` | Per-dimension scores, weights, weighted scores, ratings, and overall score |
+| `fidelity_categorical` | Real and generated proportions and their differences for each category within each categorical dimension |
+| `fidelity_numerical` | Count/Mean/Std/Min/P5-P95/Max, Pct_RMSE, and Std_Ratio for each numerical dimension |
+| `fidelity_correlation` | Real and generated average log₁₀(conductivity) and their differences for each dopant element at 700-900°C |
+
+`docs/result_v2/*.tsv` are exported documentation views of these result tables rather than the raw runtime output format.
 
 ## 7. Real Data Baseline
 
-Real data is sourced from TSV files in the `real-data/` directory (1,351 experimental records exported from MySQL), comprising 4 tables:
+The runtime real-data baseline comes from the Hive database passed through `--real-database`, for example `ods_zirconia_conductivity_v2`, and consists of 4 tables:
 
-- `material_samples.tsv` — Sample master table
-- `sample_dopants.tsv` — Dopant information
-- `sintering_steps.tsv` — Sintering steps
-- `sample_crystal_phases.tsv` — Crystal phase information
+- `material_samples`
+- `sample_dopants`
+- `sintering_steps`
+- `sample_crystal_phases`
 
-These data serve as the "gold standard" for evaluation, with a defined confidence of 1.0.
+These tables serve as the "gold standard" for evaluation, with a defined confidence of 1.0. If TSV exports also exist in the repository, they are better treated as offline snapshots rather than the current runtime input source.

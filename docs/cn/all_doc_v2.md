@@ -197,7 +197,7 @@ material-conductivity-data-enhancer/
 
 生成模块写出的逻辑表仍然是 4 张主事实表，但和真实数据相比有两个关键区别：
 
-- 四张事实表都额外带有 `recipe_group_id`
+- 底层输出 Parquet 物理上带有 `recipe_group_id`，但当前 Hive 建表时没有把这个字段写进表结构，因此从 Hive 表角度看它默认不可见
 - 子表不再保留真实数据里的自增 `id`
 
 生成侧关键字段如下：
@@ -207,7 +207,6 @@ material-conductivity-data-enhancer/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `sample_id` | BIGINT | 样本唯一标识 |
-| `recipe_group_id` | BIGINT | 配方组 ID |
 | `reference` | STRING | 固定写为 `RULE_BASED_SYNTHETIC` |
 | `material_source_and_purity` | STRING | 来源文本 |
 | `synthesis_method_id` | INT | 合成方法字典外键 |
@@ -220,7 +219,6 @@ material-conductivity-data-enhancer/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `sample_id` | BIGINT | 关联主表 |
-| `recipe_group_id` | BIGINT | 配方组 ID |
 | `dopant_element` | STRING | 掺杂元素 |
 | `dopant_ionic_radius` | DOUBLE | 离子半径 |
 | `dopant_valence` | INT | 价态 |
@@ -231,7 +229,6 @@ material-conductivity-data-enhancer/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `sample_id` | BIGINT | 关联主表 |
-| `recipe_group_id` | BIGINT | 配方组 ID |
 | `step_order` | INT | 烧结步骤序号 |
 | `sintering_temperature` | DOUBLE | 烧结温度 |
 | `sintering_duration` | DOUBLE | 烧结时间 |
@@ -241,7 +238,6 @@ material-conductivity-data-enhancer/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `sample_id` | BIGINT | 关联主表 |
-| `recipe_group_id` | BIGINT | 配方组 ID |
 | `crystal_id` | INT | 晶相字典外键 |
 | `is_major_phase` | BOOLEAN | 是否主相 |
 
@@ -251,11 +247,11 @@ material-conductivity-data-enhancer/
 sample_id = 10000001 + recipe_group_id * 8 + temperature_index
 ```
 
-这里固定使用 `8` 作为每个配方组的 sample_id 块大小，即使实际温度点数少于 8。
+这里固定使用 `8` 作为每个配方组的 sample_id 块大小，即使实际温度点数少于 8。也就是说，`recipe_group_id` 在底层 Parquet 中是存在的，但当前 Hive 建表没有把它暴露成表字段。
 
 ### 3.4 结构差异与使用注意
 
-- 验证器优先使用 `recipe_group_id` 来执行 HC-7；如果数据没有这个列，才尝试从 `sample_id` 推导。
+- HC-7 如果运行时 DataFrame 直接保留了 `recipe_group_id`，验证器会优先使用它；如果是通过当前 Hive 表读取，由于表结构里没有这个列，通常会从 `sample_id` 推导。
 - 真实数据侧 `sample_dopants` / `sintering_steps` 有 `id` 列；生成数据侧没有，验证与 Fidelity 也不依赖这些 `id`。
 - `crystal_structure_dict` 在代码里通过 `code` 判断 `c` / `m` 等晶相，不是通过 `full_name` 判断。
 
@@ -686,7 +682,7 @@ sql/hive/create_external_tables.sql
 | HC-6a | `sample_dopants.sample_id` 都能在主表中找到 | 引用完整性 |
 | HC-6b | `sintering_steps.sample_id` 都能在主表中找到 | 引用完整性 |
 | HC-6c | `sample_crystal_phases.sample_id` 都能在主表中找到 | 引用完整性 |
-| HC-7 | 同一配方组内温度升高时电导率严格升高 | 使用 `recipe_group_id` 优先 |
+| HC-7 | 同一配方组内温度升高时电导率严格升高 | 若运行时可见则使用 `recipe_group_id`；通过当前 Hive 表读取时通常从 `sample_id` 推导 |
 | HC-8 | 晶相-掺杂禁配 | 只检查“低掺杂纯立方”和“高掺杂纯单斜” |
 | HC-9 | `conductivity` 在 `[1e-8, 1.0]` | 范围校验 |
 | HC-10 | `operating_temperature` 在 `[300, 1400]` | 范围校验 |
@@ -720,6 +716,8 @@ HC-7 之所以要迭代，是因为删除某个温度点后，同一配方组中
   ├── processing_route_dict   (若存在)
   └── crystal_structure_dict  (若存在)
 ```
+
+在当前 v2 管线中，这一步就是第一次运行的核心目的：先对原始规则生成库 `ods_zirconia_rule_based_v2` 做 HC/Fidelity，并产出合规库 `ods_conductivity_compliant_rule_based_v2`；随后再对这个合规库做第二次 HC + Fidelity 复验，确认“筛掉异常样本之后，规则全通过且统计分布仍然稳定”。
 
 ### 6.3 保真度评估 (Fidelity)
 
@@ -908,7 +906,10 @@ docs/result_v2
 
 ### 7.1 验证运行概览
 
-共 4 条运行记录，对应原始 v2 数据与合规 v2 数据两轮验证：
+共 4 条运行记录，但它们不是彼此孤立的 4 次任务，而是一个连续的两阶段流程：
+
+- 第一阶段：对原始 v2 规则生成数据做“筛异常 + 生成合规库”
+- 第二阶段：对合规库做“质量复验”，确认过滤后的结果可以作为稳定版本继续使用
 
 | run_id | 类型 | 数据库 | 总样本数 | 结果 | overall_score | run_at |
 |--------|------|--------|----------|------|---------------|--------|
@@ -917,11 +918,17 @@ docs/result_v2
 | 1776130873472 | HARD_CONSTRAINT | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | PASS | 100 | 2026-04-14 09:41:13 |
 | 1776131049790 | FIDELITY | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | GOOD | 0.8640322957399598 | 2026-04-14 09:44:09 |
 
+按阶段理解，这 4 条记录的含义更清楚：
+
+- `2026-04-13`：先在原始库上发现仍有少量 `HC-7` / `HC-8` 尾部违规，同时确认原始库的整体 Fidelity 已经达到 `GOOD`
+- `2026-04-14`：再对过滤后的合规库复验，结果变成 `HC = PASS`，而 Fidelity 仍保持 `GOOD`
+
 **关键结论**
 
 - 原始 v2 规则生成数据 HC 仅在 `HC-7` 和 `HC-8` 上未通过，合规过滤后 HC 全部通过
-- 合规过滤后样本量减少 `1,327` 条，占原始数据的约 `0.0013%`
-- 两轮 Fidelity 总分几乎不变，且合规数据还微升约 `5.6e-7`，说明被过滤样本对整体统计分布几乎没有影响
+- 合规过滤后样本量减少 `1,327` 条，占原始数据的 `0.0013269066%`
+- 两轮 Fidelity 总分只上升 `5.5855e-7`；9 个维度单项分数变化都在 `4e-6` 量级以内，说明被过滤样本对整体统计分布几乎没有影响
+- 从聚合结果看，过滤量 `1,327` 恰好等于 `HC-7 (1,264) + HC-8 (63)`；更稳妥的解读是：本轮被剔除样本几乎全部集中在这两类尾部违规，不过仅凭汇总表还不能证明两类违规完全没有重叠
 
 ### 7.2 硬约束验证结果
 
@@ -954,12 +961,12 @@ docs/result_v2
 #### 结果解读
 
 - 原始 v2 数据当前只剩 `HC-7` 和 `HC-8` 两类尾部违规，其中 `HC-7` 为 `1,264` 条、`HC-8` 为 `63` 条，占比都非常低。
-- 结果文件本身只能说明“最终落表数据里仍存在少量严格单调性违规”和“仍有极少量单相禁配边界样本”，无法单独定位到唯一根因，仍需结合违规 `sample_id` / `recipe_group_id` 回查。
+- 结果文件本身只能说明“最终落表数据里仍存在少量严格单调性违规”和“仍有极少量单相禁配边界样本”，无法单独定位到唯一根因，仍需结合违规 `sample_id`，并在必要时回查底层 Parquet 中的 `recipe_group_id` 或由 `sample_id` 反推的配方组信息。
 - 合规过滤后 HC 全部 100% 通过，说明当前过滤链路已经足以把这部分尾部违规样本稳定剔除。
 
 ### 7.3 保真度评估结果
 
-以下以合规数据集 `run_id = 1776131049790` 为主。
+以下以合规数据集 `run_id = 1776131049790` 为主，因为这对应第二阶段“筛后质量复验”的最终结果。
 
 #### 7.3.1 各维度得分总览
 
@@ -1154,7 +1161,8 @@ docs/result_v2
 
 - 合规过滤只移除了 `1,327` 条样本，数量级非常小
 - 对整体 Fidelity 几乎没有影响，且综合分数还略有提升
-- 这说明当前 v2 管线已经能在几乎不改变统计分布的前提下，把结果稳定提升到“规则上也合规”
+- 这说明第一次运行主要是在把少量不合规尾部样本筛掉，第二次运行则是在验证“筛后数据依然像真实数据”
+- 当前 v2 管线已经能在几乎不改变统计分布的前提下，把结果稳定提升到“规则上也合规”
 
 ---
 

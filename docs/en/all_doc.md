@@ -1,5 +1,7 @@
 # Zirconia Ionic Conductivity Data Enhancement System — Technical Documentation
 
+> Note: the latest v2 validation results (`docs/result_v2`) and the two-stage validation / re-validation analysis are maintained in [all_doc_v2.md](./all_doc_v2.md). This document preserves the earlier batch-level write-up, so for the latest run conclusions please read the revised v2 document first.
+
 ## Table of Contents
 
 - [1. Project Overview](#1-project-overview)
@@ -107,7 +109,7 @@ material-conductivity-data-enhancer/
 
 | Field | Type | Description |
 |-------|------|-------------|
-| sample_id | BIGINT | Unique identifier (`10000001 + recipe_group_id * 8 + temp_index`) |
+| sample_id | BIGINT | Unique identifier (`10000001 + recipe_group_id * 8 + temp_index`; `recipe_group_id` physically exists in the output Parquet, but the current Hive table schema does not expose that column) |
 | reference | STRING | Source identifier (`RULE_BASED_SYNTHETIC` for generated data) |
 | material_source_and_purity | STRING | Material source and purity description |
 | synthesis_method_id | INT | Synthesis method ID (FK → synthesis_method_dict) |
@@ -501,249 +503,295 @@ The two validations are independent and may produce the following combinations:
 ### 6.4 Usage
 
 ```bash
-# Hard constraint validation only
-spark-submit --class com.lanhung.conductivity.validator.DataValidatorApp \
-  data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based --validate
+# Run HC only (still requires --output-path)
+spark-submit \
+  --class com.lanhung.conductivity.validator.DataValidatorApp \
+  data-validator/target/data-validator-1.0-SNAPSHOT.jar \
+  --database ods_zirconia_rule_based_v2 \
+  --validate \
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2
 
-# Hard constraint + fidelity assessment
-spark-submit --class com.lanhung.conductivity.validator.DataValidatorApp \
-  data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based \
-  --validate --fidelity \
+# HC + Fidelity
+spark-submit \
+  --class com.lanhung.conductivity.validator.DataValidatorApp \
+  data-validator/target/data-validator-1.0-SNAPSHOT.jar \
+  --database ods_zirconia_rule_based_v2 \
+  --validate \
+  --fidelity \
   --real-database ods_zirconia_conductivity_v2 \
-  --output-path /data/material_conductivity_data/conductivity_validation_rule_based
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2
 
-# With compliant data filtered output
-spark-submit --class com.lanhung.conductivity.validator.DataValidatorApp \
-  data-validator-1.0-SNAPSHOT.jar \
-  --database ods_zirconia_rule_based \
-  --validate --fidelity \
+# HC + Fidelity + compliant filtering
+spark-submit \
+  --class com.lanhung.conductivity.validator.DataValidatorApp \
+  data-validator/target/data-validator-1.0-SNAPSHOT.jar \
+  --database ods_zirconia_rule_based_v2 \
+  --validate \
+  --fidelity \
   --real-database ods_zirconia_conductivity_v2 \
-  --output-path /data/.../conductivity_validation_rule_based \
-  --compliant-output-path /data/.../conductivity_compliant_rule_based
+  --output-path /data/material_conductivity_v2/conductivity_validation_rule_based_v2 \
+  --compliant-output-path /data/material_conductivity_v2/ods_conductivity_compliant_rule_based_v2
 ```
+
+If neither `--validate` nor `--fidelity` is passed, the program defaults to `HC`; however, `--output-path` is still required.
 
 ---
 
 ## 7. Run Results Analysis
 
-The following analysis is based on actual run results from 2026-03-18. A total of **2 validations** were performed: the first ran HC + Fidelity validation on the raw generated data (`ods_zirconia_rule_based`), and after discovering minor violations, compliant data was filtered into `conductivity_compliant_rule_based`. A second HC + Fidelity validation was then performed on the filtered data, producing 4 validation records in total.
+The following analysis is based on the latest exported results in `docs/result_v2`. There are 4 run records in total, but they are not four unrelated jobs. They form one continuous two-stage workflow:
+
+- Stage 1: detect anomalous records in the raw v2 rule-generated dataset and produce the compliant database
+- Stage 2: re-validate the compliant database to confirm that the filtered result can be used as the stable version
 
 ### 7.1 Validation Run Overview
 
 | run_id | Validation Type | Target Database | Total Samples | Pass/Rating | Overall Score | Run Time |
 |--------|----------------|-----------------|---------------|-------------|--------------|----------|
-| 1773802503281 | HC Hard Constraint | conductivity_compliant_rule_based | 113,960,665 | **PASS** | 100 | 10:55:03 |
-| 1773800129257 | HC Hard Constraint | ods_zirconia_rule_based | 113,968,301 | **FAIL** | 99.993 | 10:15:29 |
-| 1773802681046 | Fidelity | conductivity_compliant_rule_based | 113,960,665 | **GOOD** | 0.8465 | 10:58:01 |
-| 1773801307603 | Fidelity | ods_zirconia_rule_based | 113,968,301 | **GOOD** | 0.8465 | 10:35:07 |
+| 1776064352809 | HARD_CONSTRAINT | `ods_zirconia_rule_based_v2` | 100,007,040 | FAIL | 99.99873608897934 | 2026-04-13 15:12:32 |
+| 1776065204878 | FIDELITY | `ods_zirconia_rule_based_v2` | 100,007,040 | GOOD | 0.8640317372280062 | 2026-04-13 15:26:44 |
+| 1776130873472 | HARD_CONSTRAINT | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | PASS | 100 | 2026-04-14 09:41:13 |
+| 1776131049790 | FIDELITY | `ods_conductivity_compliant_rule_based_v2` | 100,005,713 | GOOD | 0.8640322957399598 | 2026-04-14 09:44:09 |
 
 **Key Findings:**
 
-- The first validation found that the raw data (`ods_zirconia_rule_based`) failed HC. After filtering out non-compliant data, the compliant dataset (`conductivity_compliant_rule_based`) achieved 100% HC pass rate in the second validation
-- The fidelity scores of both databases are nearly identical (0.8465 vs 0.8465), indicating that the filtered non-compliant samples were negligible in number (only ~7,636 records) with no perceptible impact on overall distribution
-- Total sample difference: 113,968,301 - 113,960,665 = **7,636 records filtered out** (0.0067%)
+- `2026-04-13`: the raw database still contained a small tail of `HC-7` / `HC-8` violations, while its overall Fidelity had already reached `GOOD`
+- `2026-04-14`: the compliant database was then re-validated, yielding `HC = PASS` while Fidelity remained `GOOD`
+- The raw v2 rule-generated data failed HC only on `HC-7` and `HC-8`; after compliant filtering, all HC checks passed
+- The compliant filtering reduced the sample count by `1,327` records, which is `0.0013269066%` of the raw data
+- The overall Fidelity score increased by only `5.5855e-7`; all 9 per-dimension score changes stayed within the `4e-6` scale, indicating that the filtered samples had virtually no impact on the overall statistical distribution
+- At the aggregate level, the filtered count `1,327` happens to equal `HC-7 (1,264) + HC-8 (63)`. The safer interpretation is that the removed samples were concentrated almost entirely in these two tail-risk categories, although the summary tables alone cannot prove that there was zero overlap
 
 ### 7.2 Hard Constraint Validation Results Analysis
 
-#### Compliant Dataset (conductivity_compliant_rule_based) — All Passed
+#### Compliant Dataset: All Passed
 
 | Constraint | Status | Total Checked | Violations | Pass Rate |
 |------------|--------|---------------|------------|-----------|
-| HC-1: Conductivity positive | PASS | 113,960,665 | 0 | 100% |
-| HC-2a: Molar fraction positive | PASS | 190,961,722 | 0 | 100% |
-| HC-2b: Element solubility | PASS | 190,961,722 | 0 | 100% |
-| HC-3: Total doping ≤ 0.30 | PASS | 113,960,665 | 0 | 100% |
-| HC-4: Oxygen vacancy guarantee | PASS | 113,960,665 | 0 | 100% |
-| HC-5: Single major phase | PASS | 113,960,665 | 0 | 100% |
-| HC-6a: Referential integrity (dopants) | PASS | 113,960,665 | 0 | 100% |
-| HC-6b: Referential integrity (sintering) | PASS | 110,543,958 | 0 | 100% |
-| HC-6c: Referential integrity (crystal phases) | PASS | 113,960,665 | 0 | 100% |
-| HC-7: Monotonicity | PASS | 113,960,665 | 0 | 100% |
-| HC-8: Phase–dopant coupling | PASS | 113,960,665 | 0 | 100% |
-| HC-9: Conductivity range | PASS | 113,960,665 | 0 | 100% |
-| HC-10: Temperature range | PASS | 113,960,665 | 0 | 100% |
+| HC-1 | PASS | 100,005,713 | 0 | 100% |
+| HC-2a | PASS | 167,569,923 | 0 | 100% |
+| HC-2b | PASS | 167,569,923 | 0 | 100% |
+| HC-3 | PASS | 100,005,713 | 0 | 100% |
+| HC-4 | PASS | 100,005,713 | 0 | 100% |
+| HC-5 | PASS | 100,005,713 | 0 | 100% |
+| HC-6a | PASS | 100,005,713 | 0 | 100% |
+| HC-6b | PASS | 97,010,244 | 0 | 100% |
+| HC-6c | PASS | 100,005,713 | 0 | 100% |
+| HC-7 | PASS | 100,005,713 | 0 | 100% |
+| HC-8 | PASS | 100,005,713 | 0 | 100% |
+| HC-9 | PASS | 100,005,713 | 0 | 100% |
+| HC-10 | PASS | 100,005,713 | 0 | 100% |
 
-#### Raw Dataset (ods_zirconia_rule_based) — Two Constraints Had Violations
+#### Raw Dataset: Two Items Failed
 
 | Constraint | Status | Violations | Pass Rate |
 |------------|--------|------------|-----------|
-| HC-7: Monotonicity | **FAIL** | 7,569 | 99.993% |
-| HC-8: Phase–dopant coupling | **FAIL** | 67 | 99.99994% |
+| HC-7 | FAIL | 1,264 | 99.99873608897934% |
+| HC-8 | FAIL | 63 | 99.99993700443488% |
 | Remaining 11 items | PASS | 0 | 100% |
 
 **Violation Analysis:**
 
-- **HC-7 Monotonicity violations (7,569 records):** Approximately 0.0066% of samples exhibited temperature increase without monotonic conductivity increase within the same recipe group. This is likely caused by very small numerical reversals during floating-point truncation after multiple physical correction factors are combined.
-- **HC-8 Phase–dopant coupling violations (67 records):** A very small number of samples had crystal phase selections inconsistent with their dopant type/concentration. The proportion is approximately 0.6 per million — an edge case in the generation logic.
+- The raw v2 dataset now has only two tail-risk HC items left: `HC-7` with `1,264` violations and `HC-8` with `63` violations. Both proportions are extremely low.
+- The result files alone can only confirm that "a small number of strict monotonicity violations remain in the final written data" and that "a very small number of forbidden single-phase boundary samples still exist." They cannot, by themselves, pinpoint a single root cause; that still requires tracing the violating `sample_id` values and, when needed, checking the underlying Parquet `recipe_group_id` or a recipe-group identity derived from `sample_id`.
+- After compliant filtering, all HC items pass at 100%, indicating that the current filtering stage is sufficient to remove this remaining tail of violating samples.
 
 ### 7.3 Fidelity Assessment Results Analysis
 
-The following analysis focuses on the compliant dataset (run_id: 1773802681046).
+The following is based primarily on the compliant dataset `run_id = 1776131049790`, because this is the final result of the second-stage "post-filter quality re-validation."
 
 #### 7.3.1 Per-Dimension Score Overview
 
 | Dimension | Score | Weight | Weighted Score | Rating |
 |-----------|-------|--------|---------------|--------|
-| Dopant Element | **0.9836** | 15% | 0.1475 | EXCELLENT |
-| Sintering Temperature | **0.9071** | 5% | 0.0454 | EXCELLENT |
-| Synthesis Method | 0.8825 | 15% | 0.1324 | GOOD |
-| Operating Temperature | 0.8740 | 10% | 0.0874 | GOOD |
-| Processing Route | 0.8719 | 10% | 0.0872 | GOOD |
-| Crystal Phase (Major) | 0.8706 | 10% | 0.0871 | GOOD |
-| Dopant Molar Fraction | 0.8084 | 10% | 0.0808 | GOOD |
-| log₁₀(Conductivity) | 0.7682 | 20% | 0.1536 | GOOD |
-| Dopant-Conductivity Correlation | **0.5029** | 5% | 0.0251 | POOR |
-| **Overall Score** | | | **0.8465** | **GOOD** |
+| Dopant Element | 0.983579854542093 | 15% | 0.14753697818131395 | EXCELLENT |
+| Sintering Temperature | 0.9070683998357505 | 5% | 0.045353419991787526 | EXCELLENT |
+| Synthesis Method | 0.8825280168513817 | 15% | 0.13237920252770724 | GOOD |
+| Operating Temperature | 0.8739536607521723 | 10% | 0.08739536607521724 | GOOD |
+| Processing Route | 0.8718796654473151 | 10% | 0.08718796654473152 | GOOD |
+| Crystal Phase (Major) | 0.8705872327510655 | 10% | 0.08705872327510655 | GOOD |
+| Dopant-Conductivity Correlation | 0.8446302026217843 | 5% | 0.04223151013108922 | GOOD |
+| Dopant Molar Fraction | 0.8084145609916732 | 10% | 0.08084145609916732 | GOOD |
+| log10(Conductivity) | 0.7702383645691955 | 20% | 0.1540476729138391 | GOOD |
+| **Overall Score** |  |  | **0.8640322957399598** | **GOOD** |
 
-**Rating Distribution:** 2 EXCELLENT + 6 GOOD + 1 POOR
+**Rating Distribution:** 2 `EXCELLENT` + 7 `GOOD`
 
 #### 7.3.2 Categorical Dimension Detailed Analysis
 
-**Dopant Element (Score 0.9836, EXCELLENT)**
-
-Dopant element distribution is the best among all dimensions, with major element proportions closely matching:
+**Dopant Element: The Most Stable Dimension**
 
 | Element | Real Proportion | Generated Proportion | Difference |
 |---------|----------------|---------------------|------------|
-| Y | 37.90% | 34.09% | -3.81% |
-| Sc | 32.92% | 31.16% | -1.77% |
-| Yb | 8.77% | 10.60% | +1.83% |
-| Ce | 7.01% | 4.68% | -2.32% |
-| Dy | 3.97% | 3.73% | -0.24% |
-| Bi | 3.17% | 3.72% | +0.55% |
+| Y | 37.9022% | 34.0946% | -3.8075% |
+| Sc | 32.9220% | 31.1573% | -1.7647% |
+| Yb | 8.7704% | 10.5974% | +1.8270% |
+| Ce | 7.0075% | 4.6830% | -2.3245% |
+| Dy | 3.9665% | 3.7297% | -0.2368% |
+| Bi | 3.1732% | 3.7207% | +0.5475% |
 
-The main deviations are concentrated in Y and Ce, but all overall deviations are kept within 4%.
+This dimension scores very high, indicating that the current dopant element frequency weights are already quite close to the real data.
 
-**Synthesis Method (Score 0.8825, GOOD)**
+**Synthesis Method: Deviations Caused by Both Enumeration and Weights**
 
 | Method | Real Proportion | Generated Proportion | Difference |
 |--------|----------------|---------------------|------------|
-| Solid-state synthesis | 45.37% | 45.60% | +0.23% |
-| Commercialization | 19.91% | 20.00% | +0.09% |
-| Hydrothermal synthesis | 17.47% | 5.00% | **-12.47%** |
-| Sol–gel method | 8.88% | 11.99% | +3.11% |
-| Coprecipitation method | 0% | 10.01% | **+10.01%** |
-| (unknown) | 4.59% | 0% | -4.59% |
+| Solid-state synthesis | 45.3738% | 45.6069% | +0.2331% |
+| Commercialization | 19.9112% | 19.9960% | +0.0848% |
+| Hydrothermal synthesis | 17.4685% | 4.9982% | -12.4704% |
+| Sol–gel method | 8.8823% | 11.9936% | +3.1113% |
+| Coprecipitation method | 0% | 10.0054% | +10.0054% |
+| Coprecipitation | 0% | 2.0006% | +2.0006% |
+| / | 2.1466% | 0.9964% | -1.1502% |
 
-The main deviations come from: Hydrothermal synthesis being 12.5 percentage points too low, and Coprecipitation method not existing in the real data but accounting for 10% in generated data. This is because this category is classified differently in the real data.
+The deviations here are entirely consistent with the generator's current enumeration/weights:
 
-**Processing Route (Score 0.8719, GOOD)**
+- `Coprecipitation method` is fixed at about `10%` in the generator
+- `Coprecipitation` additionally accounts for about `2%`
 
-Dry pressing dominates in both real and generated data (~80%), with good matching. Main deviations:
+If these two categories do not exist or have different naming conventions in the real baseline, JSD will increase noticeably.
 
-- 3D printing: real 6.74%, generated 0% (missing)
-- spark plasma sintering: real 0.07%, generated 8.00% (too high)
-- vacuum filtration: real 2.37%, generated 0% (missing)
+**Processing Route: The Current Generator Only Samples 6 Routes**
 
-Some niche processing routes are missing or have imbalanced proportions in the generated data.
+Some representative deviations are as follows:
 
-**Crystal Phase (Score 0.8706, GOOD)**
+| Route | Real Proportion | Generated Proportion | Difference |
+|-------|-----------------|----------------------|------------|
+| dry pressing | 80.0148% | 80.3938% | +0.3790% |
+| 3D printing | 6.7358% | 0% | -6.7358% |
+| vacuum filtration | 2.3686% | 0% | -2.3686% |
+| RF sputtering | 0.1480% | 2.9953% | +2.8473% |
+| spray pyrolysis | 0.0740% | 2.6006% | +2.5266% |
+| spark plasma sintering | 0.0740% | 8.0041% | +7.9301% |
+
+This result is entirely consistent with the code: although the dictionary table supports 19 routes, the generation distribution only actually samples 6, so many real categories are necessarily missing.
+
+**Crystal Phase (Major): The Current Phase Distribution Clearly Deviates from Real Data**
 
 | Crystal Phase | Real Proportion | Generated Proportion | Difference |
 |--------------|----------------|---------------------|------------|
-| 1 (Cubic) | 86.89% | 53.01% | **-33.88%** |
-| 2 (Tetragonal) | 6.21% | 31.29% | **+25.09%** |
-| 3 (Monoclinic) | 6.90% | 9.26% | +2.36% |
-| 4 (Orthogonal) | 0% | 2.33% | +2.33% |
-| 5 (Rhombohedral) | 0% | 4.10% | +4.10% |
+| 1 (Cubic) | 86.8891% | 53.0114% | -33.8776% |
+| 2 (Tetragonal) | 6.2064% | 31.2935% | +25.0872% |
+| 3 (Monoclinic) | 6.9046% | 9.2644% | +2.3598% |
+| 4 (Orthogonal) | 0% | 2.3302% | +2.3302% |
+| 5 (Rhombohedral) | 0% | 4.1004% | +4.1004% |
 
-This is the categorical dimension with the largest deviation. Cubic phase accounts for 86.89% in real data but only 53.01% in generated data, a gap of 34 percentage points. Tetragonal phase expanded from 6.21% in real data to 31.29%. This suggests that the crystal phase–dopant coupling rule (Rule 3) parameters need further tuning.
+This indicates that the current `PHASE_DIST_*` parameters tend to generate more `tetragonal / orthogonal / rhombohedral`, whereas the real data is significantly skewed toward `cubic`.
 
 #### 7.3.3 Numerical Dimension Detailed Analysis
 
-**log₁₀(Conductivity) (Score 0.7682, GOOD)**
+**log10(Conductivity)**
 
 | Statistic | Real Data | Generated Data | Difference |
 |-----------|-----------|---------------|------------|
-| Sample count | 1,351 | 113,960,665 | — |
-| Mean | -2.113 | -2.439 | -0.326 |
-| Std Dev | 0.958 | 1.306 | +0.348 |
+| Count | 1,351 | 100,005,713 | — |
+| Mean | -2.1133 | -2.4624 | -0.3490 |
+| Std | 0.9584 | 1.2755 | +0.3172 |
 | Min | -7.01 | -8.00 | -0.99 |
-| P5 | -3.871 | -5.060 | -1.189 |
-| P25 | -2.623 | -3.123 | -0.500 |
-| **P50** | **-1.945** | **-2.177** | **-0.232** |
-| P75 | -1.432 | -1.483 | -0.051 |
-| P95 | -0.868 | -0.793 | +0.075 |
-| Pct_RMSE | — | 0.0836 | — |
-| Std_Ratio | — | 0.734 | — |
+| P5 | -3.8711 | -5.0520 | -1.1809 |
+| P50 | -1.9452 | -2.1735 | -0.2283 |
+| P95 | -0.8675 | -0.8941 | -0.0266 |
+| Pct_RMSE | 0.083374 | 0.083374 | — |
+| Std_Ratio | 0.751359 | 0.751359 | — |
 
-Generated data is skewed toward lower conductivity overall (mean lower by 0.33 log units) with a wider distribution (std dev larger by 0.35). High-percentile ranges (P75, P90, P95) match well, but low-percentile ranges (P5, P10) show larger deviations.
+Conclusions:
 
-**Operating Temperature (Score 0.8740, GOOD)**
+- `log10(Conductivity)` remains the lowest-scoring dimension, but it is now stably within `GOOD`
+- The generated data is still biased toward lower conductivity values, with the lower tail deviating more strongly
+- The mid-to-high quantiles are already fairly close, indicating that the main remaining gap lies in the lower tail and overall dispersion
 
-| Statistic | Real Data | Generated Data | Difference |
-|-----------|-----------|---------------|------------|
-| Mean | 726.0°C | 711.3°C | -14.7°C |
-| Std Dev | 165.4°C | 187.6°C | +22.2°C |
-| P50 | 700°C | 717°C | +17°C |
-| P5 | 500°C | 389°C | -111°C |
-| P95 | 1000°C | 1007°C | +7°C |
-| Pct_RMSE | — | 0.0524 | — |
-
-Temperature distribution matches well, with only a 17°C median difference. The low-temperature end (P5) shows a larger deviation (-111°C), indicating that generated data samples more broadly in the low-temperature region.
-
-**Dopant Molar Fraction (Score 0.8084, GOOD)**
+**Operating Temperature**
 
 | Statistic | Real Data | Generated Data | Difference |
 |-----------|-----------|---------------|------------|
-| Mean | 0.0933 | 0.0609 | -0.032 |
-| Std Dev | 0.866 | 0.042 | -0.824 |
-| P50 | 0.060 | 0.053 | -0.007 |
+| Mean | 726.0264 | 711.3150 | -14.7114 |
+| Std | 165.3772 | 187.6038 | +22.2266 |
+| Min | 290 | 300 | +10 |
+| P5 | 500 | 389 | -111 |
+| P50 | 700 | 717 | +17 |
+| P95 | 1000 | 1007 | +7 |
+| Max | 1400 | 1363 | -37 |
+
+This dimension performs well overall. The generation-side temperature lower bound is hard-clamped to 300°C, so the `290°C` present in the real data will not appear.
+
+**Dopant Molar Fraction**
+
+| Statistic | Real Data | Generated Data | Difference |
+|-----------|-----------|---------------|------------|
+| Mean | 0.0932518 | 0.0608552 | -0.0323966 |
+| Std | 0.8658486 | 0.0418956 | -0.8240 |
+| Min | 0.001 | 0.001 | 0 |
+| P50 | 0.06 | 0.0527 | -0.0073 |
+| P95 | 0.11 | 0.1337 | +0.0237 |
 | Max | 35.0 | 0.2 | -34.8 |
-| Std_Ratio | — | 0.048 | — |
+| Std_Ratio | 0.0483867 | 0.0483867 | — |
 
-The real data has an abnormally large standard deviation (0.866), indicating the presence of extreme outliers (maximum value of 35.0, far exceeding normal doping ranges). Generated data strictly follows solubility limits (max = 0.2), resulting in an extremely low standard deviation ratio (Std_Ratio = 0.048). However, this precisely reflects the strict physical reasonableness control in generated data — the extreme values in real data may be data entry errors. The median match (0.060 vs 0.053) is very close.
+This requires careful interpretation:
 
-**Sintering Temperature (Score 0.9071, EXCELLENT)**
+- The generation side is strictly constrained by solubility limits and total doping limits, with a maximum value of only `0.2`
+- The real data side contains extreme values such as `35.0`, which significantly inflates the standard deviation
+
+Whether to consider these extreme values as data entry errors cannot be determined from the result files alone. A more prudent statement is: **The numerical scope on the real data side and the physics constraint scope on the generation side are inconsistent, and the real data contains obvious outliers.**
+
+**Sintering Temperature**
 
 | Statistic | Real Data | Generated Data | Difference |
 |-----------|-----------|---------------|------------|
-| Mean | 1417.6°C | 1425.7°C | +8.2°C |
-| Std Dev | 147.2°C | 133.0°C | -14.1°C |
-| P50 | 1400°C | 1450°C | +50°C |
-| Min | 425°C | 1000°C | +575°C |
-| Pct_RMSE | — | 0.039 | — |
+| Mean | 1417.5916 | 1425.7452 | +8.1536 |
+| Std | 147.1596 | 133.0138 | -14.1458 |
+| Min | 425 | 1000 | +575 |
+| P5 | 1100 | 1200 | +100 |
+| P50 | 1400 | 1450 | +50 |
+| P95 | 1600 | 1650 | +50 |
+| Max | 1800 | 1650 | -150 |
 
-Sintering temperature matching is excellent. The generated data minimum is 1000°C (constrained by the sintering–synthesis method coupling rule), while real data contains a few extremely low temperature records (425°C). The core range of the overall distribution is highly consistent.
+This is consistent with the generator's current sintering range parameters:
+
+- The generation side does not have sintering temperatures below `1000°C`
+- The generation side also does not exceed `1650°C`
+
+Therefore, although this dimension scores high, it is essentially because "the core range is relatively close," not because the full range is completely consistent.
 
 #### 7.3.4 Correlation Dimension Analysis
 
-**Dopant-Conductivity Correlation (Score 0.5029, POOR)**
-
-This is the only dimension rated POOR. Average log₁₀(Conductivity) comparison per element:
+`Dopant-Conductivity Correlation` has now improved into the `GOOD` range and is no longer the main bottleneck:
 
 | Element | Real Data | Generated Data | Difference |
 |---------|-----------|---------------|------------|
-| Sc | -1.538 | -1.308 | +0.230 |
-| Y | -1.832 | -1.992 | -0.160 |
-| Ca | -2.236 | -2.409 | -0.173 |
-| Pr | -2.361 | -2.739 | -0.377 |
-| Dy | -1.765 | -2.237 | -0.472 |
-| Lu | -0.860 | -1.431 | -0.571 |
-| Ce | -1.515 | -2.120 | -0.606 |
-| Yb | -2.568 | -1.732 | **+0.837** |
-| Bi | -1.487 | -2.639 | **-1.152** |
+| Sc | -1.5381 | -1.5377 | +0.0004 |
+| Y | -1.8322 | -1.8323 | -0.0001 |
+| Dy | -1.7652 | -1.8174 | -0.0522 |
+| Ca | -2.2362 | -2.3292 | -0.0930 |
+| Pr | -2.3614 | -2.5490 | -0.1876 |
+| Ce | -1.5147 | -1.7503 | -0.2356 |
+| Yb | -2.5684 | -2.3218 | +0.2466 |
+| Lu | -0.8599 | -1.2003 | -0.3404 |
+| Bi | -1.4872 | -1.9490 | -0.4619 |
 
-Main sources of deviation:
-- **Bi (Bismuth):** Generated data conductivity is 1.15 log units lower — the largest deviation
-- **Yb (Ytterbium):** Generated data conductivity is 0.84 log units higher — opposite direction
-- **Ce (Cerium), Lu (Lutetium):** Deviations both exceed 0.5 log units
+This indicates:
 
-This indicates systematic deviations between each dopant element's base conductivity parameter (`baseConductivity`) and activation energy parameters compared to real experimental data, representing a key direction for future optimization.
+- `Sc` and `Y` are now almost perfectly aligned with the real values, indicating that the core dopant ranking is largely stable
+- The larger remaining deviations are concentrated in `Bi`, `Lu`, `Ce`, and `Yb`
+- If further optimization continues, the higher priority is to tighten the overall conductivity distribution first; this correlation dimension can then be tuned specifically around those elements
 
 ### 7.4 Results Comparison: Raw Data vs Compliant Data
 
-| Metric | Raw Data (ods_zirconia_rule_based) | Compliant Data (conductivity_compliant_rule_based) |
+| Metric | Raw Data | Compliant Data |
 |--------|-----------------------------------|---------------------------------------------|
-| Sample count | 113,968,301 | 113,960,665 |
-| Filtered count | — | 7,636 records (0.0067%) |
-| HC Validation | FAIL (HC-7: 7569, HC-8: 67) | **PASS** (all 100%) |
-| Fidelity Overall Score | 0.8465 | 0.8465 |
+| Database | `ods_zirconia_rule_based_v2` | `ods_conductivity_compliant_rule_based_v2` |
+| Sample Count | 100,007,040 | 100,005,713 |
+| Filtered Count | — | 1,327 |
+| HC Result | FAIL | PASS |
+| HC Failed Items | HC-7: 1,264; HC-8: 63 | None |
+| Fidelity Score | 0.8640317372280062 | 0.8640322957399598 |
 | Fidelity Rating | GOOD | GOOD |
 
-Conclusion: Compliance filtering removed only a very small number of samples (0.0067%), with no perceptible impact on fidelity scores, while bringing all hard constraint pass rates to 100%.
+Conclusions:
+
+- Compliant filtering removed only `1,327` samples, which is extremely small at this scale
+- It had virtually no impact on overall Fidelity, and the composite score even improved slightly
+- This shows that the first pass is mainly about removing a very small tail of non-compliant samples, while the second pass confirms that the filtered dataset still resembles real data
+- The current v2 pipeline can now move the result from "statistically reasonable but still containing rule violations" to "also compliant at the rule level" without materially changing the distribution
 
 ---
 
@@ -758,19 +806,25 @@ Conclusion: Compliance filtering removed only a very small number of samples (0.
 2. Synchronize real data (MySQL → Hive)
    scripts/submit-mysql2hive.sh
 
-3. Create Hive external tables
-   sql/hive/create_external_tables.sql            # Real data tables
-   sql/hive/create_external_tables_rule_based.sql  # Generated data tables
+3. Create Hive external tables for real data
+   sql/hive/create_external_tables.sql
 
-4. Generate synthetic data
-   scripts/submit.sh
+4. Generate rule-based data
+   scripts/submit-plan-e-final-original-layout.sh
+   Note: This step directly creates and writes to external tables under ods_zirconia_rule_based_v2
 
-5. Validation + compliance filtering
+5. Run validation, with optional compliant data output
+   scripts/submit-plan-e-final-original-layout-validator.sh
    scripts/submit-data-validator.sh
 
-6. Create compliant data Hive table
-   sql/hive/conductivity_compliant_rule_based.sql
+6. If compliant data directory has been produced, create Hive external tables for it
+   sql/hive/conductivity_compliant_rule_based_v2.sql
 ```
+
+Additional notes:
+
+- `sql/hive/create_external_tables_rule_based_v2.sql` is useful when the raw v2 external tables need to be created explicitly; it is not a required step for the current HDFS submission scripts.
+- `scripts/submit-data-validator.sh` currently contains multiple `spark-submit` sections, corresponding to raw data validation, validation with filtering, and re-validation of the compliant database.
 
 ### 8.2 Spark Resource Configuration (Generation Task)
 
@@ -787,8 +841,8 @@ Conclusion: Compliance filtering removed only a very small number of samples (0.
 | Hive Database | Content | Source |
 |--------------|---------|--------|
 | `ods_zirconia_conductivity_v2` | Real experimental data | MySQL sync |
-| `ods_zirconia_rule_based` | Rule-generated raw data | data-generator-base-rule |
-| `conductivity_compliant_rule_based` | Compliance-filtered data | data-validator filtered output |
+| `ods_zirconia_rule_based_v2` | Rule-generated raw data | data-generator-base-rule |
+| `ods_conductivity_compliant_rule_based_v2` | Compliance-filtered data | data-validator filtered output |
 | `conductivity_validation_rule_based` | Validation results | data-validator output |
 
 ---
